@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.local
+venv/
+__pycache__/
+*.pyc
+.next/
+out/
+artifacts/
+cache/
+typechain-types/
+contracts/deployments/localhost.json
+next-env.d.ts
+tsconfig.tsbuildinfo
+plan.json
+.DS_Store
+.pytest_cache/

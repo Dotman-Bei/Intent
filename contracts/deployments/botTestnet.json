@@ -1,0 +1,15 @@
+{
+  "network": "botTestnet",
+  "chainId": 968,
+  "deployedAt": "2026-08-19T23:02:21.195Z",
+  "deployer": "0xe4c7bE1492648a1d53aF4322a7f2e32Ec3Cd0CFc",
+  "agent": "0xe4c7bE1492648a1d53aF4322a7f2e32Ec3Cd0CFc",
+  "contracts": {
+    "StrategyRegistry": "0x657577C94BF8f6c9eDB2aF657775292a763A8d2e",
+    "ApprovalGate": "0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106",
+    "IntentVault": "0xA81892804776bF57e7CD9b2B1F93a317287B3656",
+    "MockDEX": "0x799d861971c7F73CA1a43465321Bc9B4E9D7f20c",
+    "MockLendingPool": "0xeE281Cba108BBa981ADD72E5af592B13C892f4C0",
+    "TestToken": "0x765ed84c136de5503514f571675B69375cd7897D"
+  }
+}
