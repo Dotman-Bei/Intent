@@ -167,6 +167,54 @@ Two things the real chain caught that a local node could not:
 - **Measured gas held.** `executeIntent` cost 295,619 gas on testnet against 295,607 measured
   locally — a 12-unit difference, so the projection maths needs no adjustment.
 
+## Hosting
+
+Two deployables. The frontend is static-ish Next.js; the agent is a Python service. Each needs the
+other's URL, so deploy the agent first.
+
+### 1. Agent API — Render (or any Python host)
+
+`render.yaml` in the repo root is a ready blueprint: New → Blueprint → point at this repo. It sets
+every variable except two you supply yourself:
+
+| Variable | Value |
+|---|---|
+| `ANTHROPIC_API_KEY` | your key — omit to run the rule-based parser |
+| `CORS_ORIGINS` | your Vercel URL, e.g. `https://intent.vercel.app` |
+
+`backend/Procfile` makes the same service work on Railway, Fly or Heroku unchanged.
+
+### 2. Frontend — Vercel
+
+**Root Directory must be set to `frontend`** — this is a monorepo and Vercel defaults to the repo
+root, where there is no Next.js app. Everything else autodetects.
+
+| Variable | Value |
+|---|---|
+| `NEXT_PUBLIC_CHAIN_ID` | `968` |
+| `NEXT_PUBLIC_CHAIN_NAME` | `BOT Chain Testnet` |
+| `NEXT_PUBLIC_RPC_URL` | `https://rpc.bohr.life` |
+| `NEXT_PUBLIC_EXPLORER_URL` | `https://scan.bohr.life` |
+| `NEXT_PUBLIC_IS_TESTNET` | `true` |
+| `NEXT_PUBLIC_INTENT_VAULT` | `0xA81892804776bF57e7CD9b2B1F93a317287B3656` |
+| `NEXT_PUBLIC_STRATEGY_REGISTRY` | `0x657577C94BF8f6c9eDB2aF657775292a763A8d2e` |
+| `NEXT_PUBLIC_APPROVAL_GATE` | `0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106` |
+| `NEXT_PUBLIC_TEST_TOKEN` | `0x765ed84c136de5503514f571675B69375cd7897D` |
+| `NEXT_PUBLIC_AGENT_API` | the Render URL — **not** `localhost` |
+| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | optional; injected wallets work without it |
+
+Three things that bite:
+
+- **`NEXT_PUBLIC_*` is inlined at build time.** Changing one needs a redeploy, not a restart.
+- **They ship in the JS bundle and are readable by anyone.** Everything above is public data by
+  nature. `ANTHROPIC_API_KEY` must never be given a `NEXT_PUBLIC_` name or put in Vercel at all.
+- **CORS is mutual.** The agent rejects browser calls from any origin not in its `CORS_ORIGINS`,
+  including Vercel preview deployments, which get their own hostnames.
+
+For mainnet, swap chain id to `677`, RPC to `https://rpc.botchain.ai`, explorer to
+`https://scan.botchain.ai`, `NEXT_PUBLIC_IS_TESTNET` to `false`, and the four addresses to whatever
+`deploy-mainnet.ts` prints.
+
 ## Builder Challenge #2 submission requirements
 
 The [Challenge rules](https://app.notion.com/p/BOT-Chain-Builder-Challenge-2-3b246f6c38d5803495bac38b8c078690)

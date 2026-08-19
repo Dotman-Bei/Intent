@@ -1,0 +1,52 @@
+# Render blueprint for the IntentFlow agent API.
+# The Next.js frontend deploys separately on Vercel (root directory: frontend).
+#
+# Deploy: render.com -> New -> Blueprint -> point at this repo.
+# Then set NEXT_PUBLIC_AGENT_API on Vercel to the URL Render assigns, and set
+# CORS_ORIGINS here to the Vercel domain. Both sides need to know the other.
+services:
+  - type: web
+    name: intentflow-agent
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Optional: without it the agent uses its deterministic rule-based parser
+      # and labels itself "rule-based" in the UI. Never expose this to the frontend.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-5
+
+      # BOT Chain testnet (chain 968). Swap to https://rpc.botchain.ai / 677 for mainnet.
+      - key: BOT_RPC_URL
+        value: https://rpc.bohr.life
+      - key: CHAIN_ID
+        value: "968"
+      - key: EXPLORER_URL
+        value: https://scan.bohr.life
+
+      - key: STRATEGY_REGISTRY_ADDRESS
+        value: "0x657577C94BF8f6c9eDB2aF657775292a763A8d2e"
+      - key: INTENT_VAULT_ADDRESS
+        value: "0xA81892804776bF57e7CD9b2B1F93a317287B3656"
+      - key: APPROVAL_GATE_ADDRESS
+        value: "0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106"
+      - key: TEST_TOKEN_ADDRESS
+        value: "0x765ed84c136de5503514f571675B69375cd7897D"
+      - key: TOKEN_DECIMALS
+        value: "18"
+
+      # Deliberately unset: the agent returns plans, the user's wallet signs them.
+      - key: AGENT_PRIVATE_KEY
+        value: ""
+
+      - key: DEFAULT_APPROVAL_THRESHOLD
+        value: "100"
+
+      # Must list the Vercel domain, or the browser blocks every agent call.
+      - key: CORS_ORIGINS
+        sync: false
