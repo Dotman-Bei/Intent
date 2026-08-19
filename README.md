@@ -173,9 +173,13 @@ Two things the real chain caught that a local node could not:
 behind `/api/backend`. Same origin, so there is no CORS to configure and the frontend calls the
 agent with a relative URL.
 
+The backend service pins `"entrypoint": "app.main:app"` — for the Python runtime Vercel expects a
+module spec, not a file path, and refuses the build without one once it detects FastAPI.
+
 The agent mounts its routes twice — at the root and again under `API_PREFIX` — so it answers
-whether the proxy in front of it preserves the path prefix or strips it. That also keeps
-`uvicorn app.main:app` working unchanged for local development.
+whether the proxy in front of it preserves the path prefix or strips it. Vercel forwards the full
+path to the service, so the prefixed mount is the one that serves production, while the root mount
+keeps `uvicorn app.main:app` working unchanged for local development.
 
 ### Vercel environment variables
 

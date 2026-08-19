@@ -6,7 +6,10 @@
       "framework": "nextjs"
     },
     "backend": {
-      "root": "backend"
+      "root": "backend",
+      "framework": "fastapi",
+      "runtime": "python",
+      "entrypoint": "app.main:app"
     }
   },
   "rewrites": [
