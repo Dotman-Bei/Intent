@@ -37,6 +37,9 @@ class Settings:
     default_approval_threshold: float = float(os.getenv("DEFAULT_APPROVAL_THRESHOLD", "100"))
 
     # Server
+    # Path prefix this service is mounted under, when it sits behind a path-preserving proxy
+    # (e.g. Vercel multi-service rewrites at /api/backend). Empty for a standalone host.
+    api_prefix: str = os.getenv("API_PREFIX", "").rstrip("/")
     cors_origins: list[str] = field(
         default_factory=lambda: _split(os.getenv("CORS_ORIGINS", "http://localhost:3000"))
     )

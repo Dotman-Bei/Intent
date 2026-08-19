@@ -169,47 +169,61 @@ Two things the real chain caught that a local node could not:
 
 ## Hosting
 
-Two deployables. The frontend is static-ish Next.js; the agent is a Python service. Each needs the
-other's URL, so deploy the agent first.
+`vercel.json` deploys both services as one Vercel project: the Next.js app at `/`, the Python agent
+behind `/api/backend`. Same origin, so there is no CORS to configure and the frontend calls the
+agent with a relative URL.
 
-### 1. Agent API — Render (or any Python host)
+The agent mounts its routes twice — at the root and again under `API_PREFIX` — so it answers
+whether the proxy in front of it preserves the path prefix or strips it. That also keeps
+`uvicorn app.main:app` working unchanged for local development.
 
-`render.yaml` in the repo root is a ready blueprint: New → Blueprint → point at this repo. It sets
-every variable except two you supply yourself:
+### Vercel environment variables
 
-| Variable | Value |
-|---|---|
-| `ANTHROPIC_API_KEY` | your key — omit to run the rule-based parser |
-| `CORS_ORIGINS` | your Vercel URL, e.g. `https://intent.vercel.app` |
+Set on the project; the frontend build inlines the `NEXT_PUBLIC_*` ones.
 
-`backend/Procfile` makes the same service work on Railway, Fly or Heroku unchanged.
+```
+NEXT_PUBLIC_CHAIN_ID=968
+NEXT_PUBLIC_CHAIN_NAME=BOT Chain Testnet
+NEXT_PUBLIC_RPC_URL=https://rpc.bohr.life
+NEXT_PUBLIC_EXPLORER_URL=https://scan.bohr.life
+NEXT_PUBLIC_IS_TESTNET=true
+NEXT_PUBLIC_INTENT_VAULT=0xA81892804776bF57e7CD9b2B1F93a317287B3656
+NEXT_PUBLIC_STRATEGY_REGISTRY=0x657577C94BF8f6c9eDB2aF657775292a763A8d2e
+NEXT_PUBLIC_APPROVAL_GATE=0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106
+NEXT_PUBLIC_TEST_TOKEN=0x765ed84c136de5503514f571675B69375cd7897D
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
+NEXT_PUBLIC_AGENT_API=/api/backend
+API_PREFIX=/api/backend
+ANTHROPIC_API_KEY=
+ANTHROPIC_MODEL=claude-opus-5
+BOT_RPC_URL=https://rpc.bohr.life
+CHAIN_ID=968
+EXPLORER_URL=https://scan.bohr.life
+STRATEGY_REGISTRY_ADDRESS=0x657577C94BF8f6c9eDB2aF657775292a763A8d2e
+INTENT_VAULT_ADDRESS=0xA81892804776bF57e7CD9b2B1F93a317287B3656
+APPROVAL_GATE_ADDRESS=0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106
+TEST_TOKEN_ADDRESS=0x765ed84c136de5503514f571675B69375cd7897D
+TOKEN_DECIMALS=18
+AGENT_PRIVATE_KEY=
+DEFAULT_APPROVAL_THRESHOLD=100
+```
 
-### 2. Frontend — Vercel
+`ANTHROPIC_API_KEY` is the only secret, and it is read only by the Python service — it has no
+`NEXT_PUBLIC_` prefix, so it is never inlined into the browser bundle. `AGENT_PRIVATE_KEY` stays
+empty: the agent returns plans and the user's wallet signs them.
 
-**Root Directory must be set to `frontend`** — this is a monorepo and Vercel defaults to the repo
-root, where there is no Next.js app. Everything else autodetects.
+Two things that bite: `NEXT_PUBLIC_*` values are inlined at **build** time, so changing one needs a
+redeploy rather than a restart; and the agent's dependency set (langgraph, web3, anthropic) is
+large, so if the Python service exceeds the function size limit, host it on Render instead using
+the `render.yaml` blueprint in the repo root and point `NEXT_PUBLIC_AGENT_API` at that URL with
+`CORS_ORIGINS` set to the Vercel domain.
 
-| Variable | Value |
-|---|---|
-| `NEXT_PUBLIC_CHAIN_ID` | `968` |
-| `NEXT_PUBLIC_CHAIN_NAME` | `BOT Chain Testnet` |
-| `NEXT_PUBLIC_RPC_URL` | `https://rpc.bohr.life` |
-| `NEXT_PUBLIC_EXPLORER_URL` | `https://scan.bohr.life` |
-| `NEXT_PUBLIC_IS_TESTNET` | `true` |
-| `NEXT_PUBLIC_INTENT_VAULT` | `0xA81892804776bF57e7CD9b2B1F93a317287B3656` |
-| `NEXT_PUBLIC_STRATEGY_REGISTRY` | `0x657577C94BF8f6c9eDB2aF657775292a763A8d2e` |
-| `NEXT_PUBLIC_APPROVAL_GATE` | `0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106` |
-| `NEXT_PUBLIC_TEST_TOKEN` | `0x765ed84c136de5503514f571675B69375cd7897D` |
-| `NEXT_PUBLIC_AGENT_API` | the Render URL — **not** `localhost` |
-| `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | optional; injected wallets work without it |
+### Separate hosts instead
 
-Three things that bite:
-
-- **`NEXT_PUBLIC_*` is inlined at build time.** Changing one needs a redeploy, not a restart.
-- **They ship in the JS bundle and are readable by anyone.** Everything above is public data by
-  nature. `ANTHROPIC_API_KEY` must never be given a `NEXT_PUBLIC_` name or put in Vercel at all.
-- **CORS is mutual.** The agent rejects browser calls from any origin not in its `CORS_ORIGINS`,
-  including Vercel preview deployments, which get their own hostnames.
+`render.yaml` (root) and `backend/Procfile` deploy the agent on Render, Railway, Fly or Heroku
+unchanged. In that topology drop `API_PREFIX`, set `NEXT_PUBLIC_AGENT_API` to the agent's full URL,
+and set `CORS_ORIGINS` on the agent to the Vercel domain — including preview domains, which get
+their own hostnames.
 
 For mainnet, swap chain id to `677`, RPC to `https://rpc.botchain.ai`, explorer to
 `https://scan.botchain.ai`, `NEXT_PUBLIC_IS_TESTNET` to `false`, and the four addresses to whatever

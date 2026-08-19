@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.agent.graph import agent
@@ -36,8 +36,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Routes are declared on a router, then mounted twice: at the root, and again under API_PREFIX
+# when one is set. Behind a path-preserving proxy (Vercel's multi-service rewrites send
+# /api/backend/intent through untouched) the prefixed mount answers; behind a prefix-stripping
+# proxy, or when running locally, the root mount does. Serving both means the deployment topology
+# cannot break the agent.
+router = APIRouter()
 
-@app.get("/health")
+
+@router.get("/health")
 def health() -> dict:
     """Also reports which capabilities are actually live, so the UI can show honest badges."""
     return {
@@ -52,13 +59,13 @@ def health() -> dict:
     }
 
 
-@app.get("/strategies")
+@router.get("/strategies")
 def strategies() -> dict:
     options, source = blockchain.fetch_strategies()
     return {"ok": True, "source": source, "strategies": [s.model_dump() for s in options]}
 
 
-@app.post("/intent", response_model=IntentResponse)
+@router.post("/intent", response_model=IntentResponse)
 def process_intent(req: IntentRequest) -> IntentResponse:
     """Parse -> rank -> simulate -> gate -> plan. A rejected intent is a 200 with `ok: false`;
     the chat UI renders it as a reply, not as a failure."""
@@ -82,7 +89,7 @@ def process_intent(req: IntentRequest) -> IntentResponse:
     )
 
 
-@app.post("/execute", response_model=ExecuteResponse)
+@router.post("/execute", response_model=ExecuteResponse)
 def execute(req: ExecuteRequest) -> ExecuteResponse:
     """Optional agent-side broadcast. Disabled unless AGENT_PRIVATE_KEY is set — in the default
     setup the frontend signs the plan with the user's own wallet."""
@@ -109,7 +116,7 @@ def execute(req: ExecuteRequest) -> ExecuteResponse:
         return ExecuteResponse(ok=False, error=str(exc))
 
 
-@app.get("/portfolio/{address}", response_model=PortfolioResponse)
+@router.get("/portfolio/{address}", response_model=PortfolioResponse)
 def portfolio(address: str) -> PortfolioResponse:
     positions, free, deployed, source = blockchain.fetch_portfolio(address)
     return PortfolioResponse(
@@ -121,6 +128,11 @@ def portfolio(address: str) -> PortfolioResponse:
         source=source,
         error=None if source == "chain" else "Vault not reachable from the backend RPC.",
     )
+
+
+app.include_router(router)
+if settings.api_prefix:
+    app.include_router(router, prefix=settings.api_prefix)
 
 
 if __name__ == "__main__":
