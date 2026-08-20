@@ -37,9 +37,6 @@ export function Nav({
             <Link href="/#how" className="nav-link sm-hide">
               How it works
             </Link>
-            <Link href="/#limits" className="nav-link sm-hide">
-              Limits
-            </Link>
             {wallet ? <ConnectWallet compact /> : null}
           </div>
         </nav>

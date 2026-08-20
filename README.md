@@ -37,6 +37,8 @@ The three layers share exactly two things: an ABI export, and an intent hash.
   standing permission — and an unconfigured user is asked every time.
 - **It degrades honestly.** No API key → deterministic rule-based parser, labelled as such in the UI.
   No RPC → static catalog, labelled `source: catalog`. It never presents a fallback as live data.
+  Caveats stay attached to the numbers themselves — the strategy card states its compounding
+  assumption, its risk haircut and its worst case inline.
 
 ---
 

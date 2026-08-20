@@ -66,25 +66,6 @@ const STATEMENTS = [
   },
 ];
 
-const LIMITS = [
-  {
-    lead: "It does not price real liquidity.",
-    body: "Projections compound the advertised APY and subtract a risk-derived haircut and measured gas. They are not a quote, and they do not model depth, slippage or a pool draining under you.",
-  },
-  {
-    lead: "It cannot invent a venue.",
-    body: "If nothing whitelisted fits your risk band, you get told that, not a compromise. Adding a protocol is an owner transaction on the registry — deliberately not something the agent can do.",
-  },
-  {
-    lead: "It does not hold your keys.",
-    body: "The default deployment runs the backend with no funded key at all: it returns a plan, your wallet signs it. Agent-side broadcast exists, but it is off unless you set a key.",
-  },
-  {
-    lead: "It is only as current as the chain read.",
-    body: "APY comes from the registry entry each protocol publishes. When the RPC is unreachable the app says so and falls back to a catalog marked as such, rather than quietly showing stale numbers as live ones.",
-  },
-];
-
 export default function LandingPage() {
   return (
     <Shell>
@@ -312,32 +293,6 @@ export default function LandingPage() {
         </div>
         <div className="rv" style={{ marginTop: 22 }}>
           <TextLink href="/docs#contracts">See the contract that enforces each one</TextLink>
-        </div>
-      </Section>
-
-      <Rule />
-
-      {/* --------------------------------------------------------------- limits */}
-      <Section id="limits">
-        <SectionHead
-          kicker="Honest limits"
-          title="What it cannot do."
-          sub="Written down because a DeFi agent that only advertises its upside is the failure mode, not the product."
-        />
-        <div style={{ marginTop: 24 }}>
-          <StatementRows
-            rows={
-              CONTRACTS_CONFIGURED
-                ? LIMITS
-                : [
-                    {
-                      lead: "It is not deployed to a public network yet.",
-                      body: "The contracts pass their suite and the whole loop — intent, approval, execution, position read-back — is verified against a local node, but no addresses are configured in this build. Chain identity is env-driven, so a deployment is a config change, not a rebuild of anything you see here.",
-                    },
-                    ...LIMITS,
-                  ]
-            }
-          />
         </div>
       </Section>
 
