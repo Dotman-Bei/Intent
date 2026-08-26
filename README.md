@@ -244,10 +244,10 @@ eligibility condition:
 | Requirement | Status |
 |---|---|
 | Deployed to BOT Chain **Mainnet** | ❌ not yet — testnet done, mainnet needs funded BOT |
-| Publicly verifiable product with a complete business loop | ⚠️ loop is complete and verified locally; needs a public URL |
+| Publicly verifiable product with a complete business loop | ⚠️ loop is complete and verified on public testnet; needs a public URL |
 | Wallet connection + core business flow | ⚠️ built and executing on testnet via a local signer; browser wallet flow still unverified |
 | Publicly accessible website or demo | ❌ not deployed (Vercel or similar) |
-| GitHub repository | ❌ not initialised |
+| GitHub repository | ✅ [Dotman-Bei/Intent](https://github.com/Dotman-Bei/Intent) |
 | AI as a core on-chain capability (AI Native track) | ✅ the agent parses, ranks, simulates and gates every execution |
 
 Timeline: submissions close **Aug 22, 23:59 UTC+8**; Demo Day Aug 24; winners Aug 30.
@@ -303,14 +303,15 @@ Model: `claude-opus-5` via the Anthropic SDK's structured outputs (`messages.par
 | Check | Result |
 |---|---|
 | `contracts`: `npx hardhat test` | 19 passing |
-| `backend`: `python -m pytest tests -q` | 21 passing, offline |
+| `backend`: `python -m pytest tests -q` | 25 passing, offline |
 | `frontend`: `npm run build` | compiles, 4 routes prerendered |
 | End-to-end on a local node | intent → plan → approve → execute → position → read-back verified |
 | End-to-end on BOT Chain testnet | verified — contracts deployed, verified on BOTScan, position open |
 
-Not yet done: **nothing is deployed to a public network**, no public demo URL, and no git repo.
-Network parameters are now known and wired in, so deployment needs only a funded key. Mock venues
-still stand in for real protocol adapters — mainnet needs real BOT Chain venue addresses (B DEX is
-the obvious first integration).
+Not yet done: **no mainnet deployment and no public demo URL**. Testnet is live and the repo
+is public, so what remains is a funded mainnet key and a hosted frontend — both config, not code.
+The browser wallet path is built but has only been exercised through a local signer, so it stays
+unverified until the app runs on a real domain. Mock venues still stand in for real protocol
+adapters — mainnet needs real BOT Chain venue addresses (B DEX is the obvious first integration).
 
 MIT licensed.

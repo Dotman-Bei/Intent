@@ -16,6 +16,19 @@ def _split(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
+def _prefix(value: str) -> str:
+    """Normalise a mount prefix into the exact shape `include_router` accepts.
+
+    This value is typed by hand into a host's dashboard, so it arrives with the leading slash
+    missing, a trailing one attached, or padding whitespace. `include_router` asserts on the
+    leading slash and that assert fires at import time, so one typo takes down every route —
+    including `/health`, which is the endpoint the platform polls to decide whether the deploy
+    came up. Empty (or a bare "/") means "no second mount", which is what a standalone host wants.
+    """
+    cleaned = value.strip().strip("/")
+    return f"/{cleaned}" if cleaned else ""
+
+
 @dataclass(frozen=True)
 class Settings:
     # AI
@@ -39,7 +52,7 @@ class Settings:
     # Server
     # Path prefix this service is mounted under, when it sits behind a path-preserving proxy
     # (e.g. Vercel multi-service rewrites at /api/backend). Empty for a standalone host.
-    api_prefix: str = os.getenv("API_PREFIX", "").rstrip("/")
+    api_prefix: str = _prefix(os.getenv("API_PREFIX", ""))
     cors_origins: list[str] = field(
         default_factory=lambda: _split(os.getenv("CORS_ORIGINS", "http://localhost:3000"))
     )

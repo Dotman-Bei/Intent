@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.agent.graph import agent  # noqa: E402
 from app.agent.state import new_state  # noqa: E402
 from app.services import blockchain, simulator  # noqa: E402
+from app.config import _prefix  # noqa: E402
 from app.services.llm import parse_with_rules  # noqa: E402
 
 USER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
@@ -149,3 +150,22 @@ class TestChainEncoding:
 
     def test_wei_conversion_round_trips(self):
         assert blockchain.from_wei(blockchain.to_wei(12.5, 18), 18) == 12.5
+
+
+class TestApiPrefix:
+    """API_PREFIX is typed into a host's dashboard by hand, and FastAPI asserts on its shape at
+    import time — an unnormalised value takes down every route, /health included, so the platform
+    cannot even report why the deploy is down."""
+
+    def test_adds_the_leading_slash_include_router_asserts_on(self):
+        assert _prefix("api/backend") == "/api/backend"
+
+    def test_drops_a_trailing_slash_and_padding(self):
+        assert _prefix("  /api/backend/  ") == "/api/backend"
+
+    def test_already_correct_values_pass_through(self):
+        assert _prefix("/api/backend") == "/api/backend"
+
+    def test_empty_and_bare_root_mean_no_second_mount(self):
+        assert _prefix("") == ""
+        assert _prefix("/") == ""
