@@ -16,3 +16,4 @@ plan.json
 .DS_Store
 .pytest_cache/
 .wallet-backup.txt
+contracts/.mainnet-wallet.txt

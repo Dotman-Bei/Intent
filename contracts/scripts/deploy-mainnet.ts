@@ -15,6 +15,13 @@ type StrategySeed = {
   protocolType: string;
   riskScore: number;
   baseApyBps: number;
+  /** 4-byte selector for the venue's entry call; omit for deposit(address,uint256). */
+  depositSelector?: string;
+  /** ArgLayout index: 0 TokenThenAmount, 1 AmountThenToken, 2 AmountOnly,
+   *  3 AmountThenReceiver (ERC-4626), 4 AmountReceiverOwner (ERC-4626). */
+  depositArgs?: number;
+  withdrawSelector?: string;
+  withdrawArgs?: number;
 };
 
 async function main() {
@@ -29,8 +36,16 @@ async function main() {
   }
 
   const seeds: StrategySeed[] = JSON.parse(process.env.MAINNET_STRATEGIES || "[]");
+  if (seeds.length === 0 && process.env.ALLOW_NO_VENUES !== "true") {
+    throw new Error(
+      "MAINNET_STRATEGIES is empty — refusing to ship a vault with no venues. " +
+        "Set ALLOW_NO_VENUES=true to deploy an empty whitelist deliberately."
+    );
+  }
   if (seeds.length === 0) {
-    throw new Error("MAINNET_STRATEGIES is empty — refusing to ship a vault with no venues");
+    console.warn("ALLOW_NO_VENUES=true — deploying with an EMPTY whitelist.");
+    console.warn("  deposit / withdraw:  work");
+    console.warn("  executeIntent:       reverts until a venue is registered");
   }
 
   console.log(`network:  ${network.name}`);
@@ -56,10 +71,22 @@ async function main() {
   await vault.waitForDeployment();
   console.log("IntentVault:     ", await vault.getAddress());
 
-  for (const s of seeds) {
+  for (let i = 0; i < seeds.length; i++) {
+    const s = seeds[i];
     await (
       await registry.addStrategy(s.protocol, s.name, s.protocolType, s.riskScore, s.baseApyBps)
     ).wait();
+
+    // A venue left on the default call shapes is reachable only if it happens to speak
+    // deposit(address,uint256) / withdraw(address,uint256). Declaring the real shapes here keeps
+    // registration and configuration in one pass, so no venue is ever briefly live with the
+    // wrong exit configured — the one mistake this vault cannot undo.
+    if (s.depositSelector) {
+      await (await registry.setDepositCall(i, s.depositSelector, s.depositArgs ?? 0)).wait();
+    }
+    if (s.withdrawSelector) {
+      await (await registry.setWithdrawCall(i, s.withdrawSelector, s.withdrawArgs ?? 0)).wait();
+    }
     console.log(`registered: ${s.name} (${s.protocol})`);
   }
 

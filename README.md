@@ -184,15 +184,17 @@ at those addresses any more; they are listed nowhere below deliberately.
 
 | Contract | Address |
 |---|---|
-| IntentVault | [`0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2`](https://scan.bohr.life/address/0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2) |
-| StrategyRegistry | [`0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67`](https://scan.bohr.life/address/0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67) |
-| ApprovalGate | [`0x0ef0864E04134E1DF9a024a8DbdAF847deD04105`](https://scan.bohr.life/address/0x0ef0864E04134E1DF9a024a8DbdAF847deD04105) |
-| MockDEX (venue 0) | [`0xC4018572e4cE7b38E4Baa8683FCD88E90B034778`](https://scan.bohr.life/address/0xC4018572e4cE7b38E4Baa8683FCD88E90B034778) |
-| MockLendingPool (venue 1) | [`0xf014B745EF4A7F2C55C5427983bcC243F1726fe4`](https://scan.bohr.life/address/0xf014B745EF4A7F2C55C5427983bcC243F1726fe4) |
-| Test token (faucet) | [`0xd7515912FC63D6484c0fDd4eA9930b17a15659f9`](https://scan.bohr.life/address/0xd7515912FC63D6484c0fDd4eA9930b17a15659f9) |
+| IntentVault | [`0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2`](https://scan.bohr.life/address/0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2#code) |
+| StrategyRegistry | [`0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67`](https://scan.bohr.life/address/0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67#code) |
+| ApprovalGate | [`0x0ef0864E04134E1DF9a024a8DbdAF847deD04105`](https://scan.bohr.life/address/0x0ef0864E04134E1DF9a024a8DbdAF847deD04105#code) |
+| MockDEX (venue 0) | [`0xC4018572e4cE7b38E4Baa8683FCD88E90B034778`](https://scan.bohr.life/address/0xC4018572e4cE7b38E4Baa8683FCD88E90B034778#code) |
+| MockLendingPool (venue 1) | [`0xf014B745EF4A7F2C55C5427983bcC243F1726fe4`](https://scan.bohr.life/address/0xf014B745EF4A7F2C55C5427983bcC243F1726fe4#code) |
+| Test token (faucet) | [`0xd7515912FC63D6484c0fDd4eA9930b17a15659f9`](https://scan.bohr.life/address/0xd7515912FC63D6484c0fDd4eA9930b17a15659f9#code) |
 
-Source verification on BOTScan is still pending — it needs `BOTSCAN_API_KEY` in `contracts/.env`,
-which is why these links point at the address rather than its verified source.
+All six are source-verified. BOTScan runs Blockscout, whose verification API takes no
+authentication — but `hardhat-verify` refuses to start unless *some* key is configured, so
+`BOTSCAN_API_KEY` in `contracts/.env` just needs any non-empty placeholder. There is no key to
+register for.
 
 First live execution against this deployment — 50 wBOT into BOTSwap Stable Pool, block 21,241,453:
 [`0x59f0b4…2439`](https://scan.bohr.life/tx/0x59f0b4b1d966ff8bbabccfce80e965621ed84aaed577f67f7f2dc07132352439)

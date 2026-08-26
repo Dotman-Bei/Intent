@@ -30,7 +30,14 @@ contract StrategyRegistry {
     enum ArgLayout {
         TokenThenAmount, // f(address token, uint256 amount)
         AmountThenToken, // f(uint256 amount, address token)
-        AmountOnly // f(uint256 amount)
+        AmountOnly, // f(uint256 amount)
+        // ERC-4626. The address arguments are the *receiver* and the share *owner*, never the
+        // token — the vault fills both with its own address so shares are minted to, and burned
+        // from, the contract that holds the position. Encoding an ERC-4626 venue as
+        // AmountThenToken instead has the right arity and the wrong meaning: it would mint the
+        // shares to the asset's own contract, where nothing can ever redeem them.
+        AmountThenReceiver, // f(uint256 assets, address receiver)
+        AmountReceiverOwner // f(uint256 assets, address receiver, address owner)
     }
 
     mapping(uint256 => Strategy) private _strategies;

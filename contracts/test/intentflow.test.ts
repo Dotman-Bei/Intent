@@ -526,3 +526,77 @@ describe("IntentVault — venues that do not speak the default deposit/withdraw 
     );
   });
 });
+
+describe("IntentVault — ERC-4626 venues", () => {
+  const DEPOSIT_4626 = ethers.id("deposit(uint256,address)").slice(0, 10);
+  const WITHDRAW_4626 = ethers.id("withdraw(uint256,address,address)").slice(0, 10);
+  const AMOUNT_THEN_TOKEN = 1;
+  const AMOUNT_THEN_RECEIVER = 3;
+  const AMOUNT_RECEIVER_OWNER = 4;
+
+  async function with4626() {
+    const base = await deployFixture();
+    const vault4626 = await (
+      await ethers.getContractFactory("MockERC4626")
+    ).deploy(await base.token.getAddress());
+    await base.registry.addStrategy(await vault4626.getAddress(), "Bulwark-like Vault", "Vault", 4, 0);
+    return { ...base, venue: vault4626, id: 2n };
+  }
+
+  async function declare(f: any, depositArgs: number) {
+    await f.registry.setDepositCall(f.id, DEPOSIT_4626, depositArgs);
+    await f.registry.setWithdrawCall(f.id, WITHDRAW_4626, AMOUNT_RECEIVER_OWNER);
+  }
+
+  async function open(f: any, amount: bigint, label: string) {
+    await depositToVault(f.vault, f.token, f.user, amount);
+    await f.gate.connect(f.user).setConfig(amount * 2n);
+    await f.vault
+      .connect(f.agent)
+      .executeIntent(f.user.address, intentHash(label), f.id, await f.token.getAddress(), amount);
+  }
+
+  it("round-trips principal through a 4626 venue", async () => {
+    const f = await with4626();
+    await declare(f, AMOUNT_THEN_RECEIVER);
+    await open(f, ONE * 50n, "4626-ok");
+
+    // Shares are held by the vault contract, which is what owns the position.
+    expect(await f.venue.balanceOf(await f.vault.getAddress())).to.equal(ONE * 50n);
+
+    await f.vault.connect(f.user).closePosition(f.user.address, 0);
+    expect(await f.vault.freeBalance(f.user.address, await f.token.getAddress())).to.equal(ONE * 50n);
+    expect(await f.venue.balanceOf(await f.vault.getAddress())).to.equal(0n);
+  });
+
+  it("AmountThenToken would mint the shares to the asset contract, unrecoverably", async () => {
+    const f = await with4626();
+    // The trap: right arity, wrong meaning. The receiver becomes the token address.
+    await declare(f, AMOUNT_THEN_TOKEN);
+    await open(f, ONE * 50n, "4626-trap");
+
+    const tokenAddress = await f.token.getAddress();
+    expect(await f.venue.balanceOf(await f.vault.getAddress())).to.equal(0n);
+    expect(await f.venue.balanceOf(tokenAddress)).to.equal(ONE * 50n);
+
+    // Nothing can redeem them: the vault owns no shares, so the exit reverts for good.
+    await expect(
+      f.vault.connect(f.user).closePosition(f.user.address, 0)
+    ).to.be.revertedWithCustomError(f.vault, "StrategyExitFailed");
+  });
+
+  it("yield accrued in share price is left behind by an assets-denominated exit", async () => {
+    const f = await with4626();
+    await declare(f, AMOUNT_THEN_RECEIVER);
+    await open(f, ONE * 50n, "4626-yield");
+
+    // Donate to the venue: the classic 4626 way yield reaches share holders.
+    await f.token.transfer(await f.venue.getAddress(), ONE * 10n);
+
+    await f.vault.connect(f.user).closePosition(f.user.address, 0);
+    // Exactly principal comes back — the position is denominated in assets, not shares.
+    expect(await f.vault.freeBalance(f.user.address, await f.token.getAddress())).to.equal(ONE * 50n);
+    // ...and the yield stays as residual shares the vault holds but cannot attribute.
+    expect(await f.venue.balanceOf(await f.vault.getAddress())).to.be.greaterThan(0n);
+  });
+});

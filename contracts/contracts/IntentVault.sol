@@ -189,7 +189,7 @@ contract IntentVault is ReentrancyGuard {
         StrategyRegistry.ArgLayout _args,
         address _token,
         uint256 _amount
-    ) internal pure returns (bytes memory) {
+    ) internal view returns (bytes memory) {
         bytes4 selector = _selector == bytes4(0) ? _default : _selector;
 
         if (_args == StrategyRegistry.ArgLayout.TokenThenAmount) {
@@ -198,7 +198,15 @@ contract IntentVault is ReentrancyGuard {
         if (_args == StrategyRegistry.ArgLayout.AmountThenToken) {
             return abi.encodeWithSelector(selector, _amount, _token);
         }
-        return abi.encodeWithSelector(selector, _amount);
+        if (_args == StrategyRegistry.ArgLayout.AmountOnly) {
+            return abi.encodeWithSelector(selector, _amount);
+        }
+        // ERC-4626: the address arguments are receiver and share owner. Both are this vault —
+        // it is what holds the position, so it must be what holds and burns the shares.
+        if (_args == StrategyRegistry.ArgLayout.AmountThenReceiver) {
+            return abi.encodeWithSelector(selector, _amount, address(this));
+        }
+        return abi.encodeWithSelector(selector, _amount, address(this), address(this));
     }
 
     /// @notice Pull a position back out of its protocol. Whatever comes back (principal + yield)
