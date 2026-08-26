@@ -13,8 +13,15 @@ export const STRATEGY_REGISTRY_ADDRESS = address(process.env.NEXT_PUBLIC_STRATEG
 export const APPROVAL_GATE_ADDRESS = address(process.env.NEXT_PUBLIC_APPROVAL_GATE);
 export const TEST_TOKEN_ADDRESS = address(process.env.NEXT_PUBLIC_TEST_TOKEN);
 
-export const TOKEN_DECIMALS = 18;
-export const TOKEN_SYMBOL = "BOT";
+export const TOKEN_DECIMALS = Number(process.env.NEXT_PUBLIC_TOKEN_DECIMALS || 18);
+export const TOKEN_SYMBOL = process.env.NEXT_PUBLIC_TOKEN_SYMBOL || "BOT";
+
+/**
+ * Only the testnet mock mints on demand. On mainnet the deposit token is a real ERC-20 (WBOT),
+ * which has no `faucet()` — offering the button there produces a revert and nothing else.
+ */
+export const TOKEN_HAS_FAUCET =
+  (process.env.NEXT_PUBLIC_TOKEN_HAS_FAUCET || "true") === "true";
 
 /** True once the deploy script's addresses are in .env.local. */
 export const CONTRACTS_CONFIGURED = INTENT_VAULT_ADDRESS !== ZERO;

@@ -155,8 +155,12 @@ def fetch_strategies() -> tuple[list[StrategyOption], str]:
                 )
                 for sid, row in zip(ids, rows)
             ]
-            if strategies:
-                return strategies, "chain"
+            # An empty result is an *answer*, not a failure: the chain is reachable and the
+            # registry genuinely whitelists nothing. Falling through to the catalog here would
+            # advertise two venues that do not exist on this chain and cannot be executed
+            # against — exactly the "presents a fallback as live data" failure the catalog is
+            # labelled to avoid. The catalog is for an unreachable chain, nothing else.
+            return strategies, "chain"
         except Exception as exc:  # noqa: BLE001
             log.warning("registry read failed (%s) — using offline catalog", exc)
 

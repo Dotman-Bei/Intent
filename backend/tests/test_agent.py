@@ -169,3 +169,23 @@ class TestApiPrefix:
     def test_empty_and_bare_root_mean_no_second_mount(self):
         assert _prefix("") == ""
         assert _prefix("/") == ""
+
+
+class TestEmptyRegistry:
+    """A reachable chain whose registry whitelists nothing must say so, not fall back to the
+    catalog. The mainnet deployment ships with an empty whitelist, so this is its actual state."""
+
+    def test_empty_chain_registry_is_not_masked_by_the_catalog(self, monkeypatch):
+        monkeypatch.setattr(blockchain, "fetch_strategies", lambda: ([], "chain"))
+        result = run("Earn yield on 50 BOT with low risk for 30 days")
+
+        assert result["error"] is not None
+        assert "no whitelisted strategies" in result["error"].lower()
+        assert result["strategies"] == []
+        assert result["execution_plan"] is None
+        assert any("registry is empty" in line for line in result["trace"])
+
+    def test_a_populated_registry_still_reports_the_risk_band_reason(self):
+        result = run("Earn yield on 50 BOT with low risk for 30 days")
+        assert result["error"] is None
+        assert result["selected_strategy"] is not None

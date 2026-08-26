@@ -215,6 +215,39 @@ Two things the real chain caught that a local node could not:
   who has never configured an approval threshold, which writes more state — so the projection
   maths errs toward overstating cost, which is the safe direction.
 
+## Live on BOT Chain mainnet
+
+Deployed to chain 677 on 2026-08-26, with an **empty strategy whitelist**.
+
+| Contract | Address | Source |
+|---|---|---|
+| StrategyRegistry | [`0xE7298c0354cC627dF8c5ED09e5fC41AF67BE3001`](https://scan.botchain.ai/address/0xE7298c0354cC627dF8c5ED09e5fC41AF67BE3001#code) | verified |
+| ApprovalGate | [`0x94AF2d4b80EF32644B6873Ea3CD159CD307b0003`](https://scan.botchain.ai/address/0x94AF2d4b80EF32644B6873Ea3CD159CD307b0003#code) | verified |
+| IntentVault | [`0xdcc0A561Ae8a5ecA99E2e0C13effC561547A24d1`](https://scan.botchain.ai/address/0xdcc0A561Ae8a5ecA99E2e0C13effC561547A24d1) | pending |
+
+Deployment cost 0.064354 BOT at 20 gwei, against 0.0639 measured — a 0.7% difference.
+
+**Custody works; execution does not.** `deposit` and `withdraw` function normally. `executeIntent`
+reverts, because no strategy is registered and none can be: BOT Chain has no venue this vault can
+route to. B DEX is a Uniswap V2/V3 fork, whose two-token `addLiquidity`/`removeLiquidity` shape no
+`ArgLayout` can express and whose deepest pool holds roughly $500. The one ERC-4626 vault on the
+chain, Bulwark Vault at `0x4654FbCf3bF5F806bEda909cd8F893d8A320D606`, is the right shape but its
+asset BUSD has a total supply of zero, so nobody can obtain the token it accepts.
+
+Registering a venue later costs ~0.005 BOT and needs no redeploy:
+
+```solidity
+registry.addStrategy(protocol, name, type, riskScore, baseApyBps);
+registry.setDepositCall(id, selector, argLayout);
+registry.setWithdrawCall(id, selector, argLayout);
+```
+
+IntentVault's source is not yet verified — Cloudflare fronts BOTScan and blocks the verification
+POST, which surfaces as `Unexpected token '<'` from hardhat. Verify it through the browser UI with
+`contracts/standard-input.json`, solc `v0.8.24+commit.e11b9ed9`, contract
+`contracts/IntentVault.sol:IntentVault`. Note `registry` and `approvalGate` are `immutable`, so the
+deployed runtime bytecode legitimately differs from the artifact; the metadata hash matches.
+
 ## Hosting
 
 `vercel.json` deploys both services as one Vercel project: the Next.js app at `/`, the Python agent

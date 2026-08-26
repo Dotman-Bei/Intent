@@ -11,6 +11,7 @@ import {
   INTENT_VAULT_ABI,
   INTENT_VAULT_ADDRESS,
   TEST_TOKEN_ADDRESS,
+  TOKEN_HAS_FAUCET,
   TOKEN_DECIMALS,
   TOKEN_SYMBOL,
 } from "@/constants/contracts";
@@ -140,9 +141,11 @@ export function VaultPanel({ onChange }: { onChange: () => void }) {
           <button type="button" className="link-quiet" onClick={withdraw} disabled={busy}>
             Withdraw idle balance
           </button>
-          <button type="button" className="link-quiet" onClick={faucet} disabled={busy}>
-            Testnet faucet (+1,000 {TOKEN_SYMBOL})
-          </button>
+          {TOKEN_HAS_FAUCET ? (
+            <button type="button" className="link-quiet" onClick={faucet} disabled={busy}>
+              Testnet faucet (+1,000 {TOKEN_SYMBOL})
+            </button>
+          ) : null}
         </div>
       </div>
 

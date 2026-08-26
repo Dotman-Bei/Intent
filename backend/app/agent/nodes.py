@@ -58,6 +58,19 @@ def fetch_strategies(state: IntentFlowState) -> IntentFlowState:
     all_strategies, source = blockchain.fetch_strategies()
     _trace(state, f"read {len(all_strategies)} active strategies from {source}")
 
+    # Nothing whitelisted at all is a different answer from nothing in your risk band, and the
+    # user can act on the difference: one means "widen your mandate", the other means "this
+    # deployment has no venues yet". Blaming the risk band for an empty registry would be a lie.
+    if not all_strategies:
+        state["strategies"] = []
+        state["excluded"] = []
+        state["error"] = (
+            "This deployment has no whitelisted strategies yet, so there is nothing to execute "
+            "against. The vault still accepts deposits and withdrawals."
+        )
+        _trace(state, "registry is empty — no venue is registered on this chain")
+        return state
+
     band = simulator.risk_band(parsed.risk_tolerance)
     eligible = [s for s in all_strategies if s.risk_score in band]
     # Kept, not discarded: what the agent refused is as much of the answer as what it picked.

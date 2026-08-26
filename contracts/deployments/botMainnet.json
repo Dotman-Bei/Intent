@@ -1,0 +1,13 @@
+{
+  "network": "botMainnet",
+  "chainId": 677,
+  "deployedAt": "2026-08-26T19:30:06.422Z",
+  "deployer": "0xdA081Cb7D50608571cbE3557b0fF06cE7d74445a",
+  "agent": "0xdA081Cb7D50608571cbE3557b0fF06cE7d74445a",
+  "contracts": {
+    "StrategyRegistry": "0xE7298c0354cC627dF8c5ED09e5fC41AF67BE3001",
+    "ApprovalGate": "0x94AF2d4b80EF32644B6873Ea3CD159CD307b0003",
+    "IntentVault": "0xdcc0A561Ae8a5ecA99E2e0C13effC561547A24d1"
+  },
+  "strategies": []
+}
