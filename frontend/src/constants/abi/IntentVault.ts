@@ -429,11 +429,6 @@ export const IntentVaultABI = [
         "internalType": "uint256",
         "name": "_amount",
         "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_strategyData",
-        "type": "bytes"
       }
     ],
     "name": "executeIntent",

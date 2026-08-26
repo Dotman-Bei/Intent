@@ -105,7 +105,6 @@ def execute(req: ExecuteRequest) -> ExecuteResponse:
             strategy_id=req.strategy_id,
             token_address=req.token_address,
             amount_wei=int(req.amount_wei),
-            strategy_data=req.strategy_data,
         )
         return ExecuteResponse(
             ok=True,

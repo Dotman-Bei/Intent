@@ -67,6 +67,12 @@ contract IntentVault is ReentrancyGuard {
     error StrategyCallFailed();
     error StrategyExitFailed(uint256 positionId, address protocol);
 
+    /// @dev Fallback shapes, used when the registry entry leaves a selector unset. They match the
+    ///      mock venues; a real protocol almost never does, which is what setDepositCall and
+    ///      setWithdrawCall exist for.
+    bytes4 private constant DEFAULT_DEPOSIT = bytes4(keccak256("deposit(address,uint256)"));
+    bytes4 private constant DEFAULT_WITHDRAW = bytes4(keccak256("withdraw(address,uint256)"));
+
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
         _;
@@ -115,14 +121,19 @@ contract IntentVault is ReentrancyGuard {
 
     /// @param _intentHash keccak256 of the canonical intent JSON produced by the agent. Doubles as
     ///        the replay guard and as the handle the user signs in ApprovalGate.
-    /// @param _strategyData calldata forwarded to the whitelisted protocol (e.g. its deposit call).
+    /// @dev The protocol calldata is built here, from the venue's registry-declared entry shape.
+    ///      It used to be a caller-supplied `_strategyData` parameter, which was exploitable: the
+    ///      vault approves `_amount` to the protocol and then calls it with whatever bytes it was
+    ///      handed, so a caller could pass the venue's *withdraw* calldata instead of its deposit
+    ///      calldata and pull every other user's principal out of the pooled venue balance for the
+    ///      price of a 1-token position. Those tokens landed in the vault unattributed and left
+    ///      every other position permanently unclosable.
     function executeIntent(
         address _user,
         bytes32 _intentHash,
         uint256 _strategyId,
         address _token,
-        uint256 _amount,
-        bytes calldata _strategyData
+        uint256 _amount
     ) external onlyAgentOrUser(_user) nonReentrant returns (uint256 positionId) {
         if (_amount == 0) revert ZeroAmount();
         if (executedIntents[_user][_intentHash]) revert IntentAlreadyExecuted(_intentHash);
@@ -143,7 +154,9 @@ contract IntentVault is ReentrancyGuard {
         // Approve exactly the amount, hand it to the protocol, then drop the allowance back to zero
         // so a whitelisted-but-buggy protocol cannot come back for more later.
         IERC20(_token).forceApprove(strategy.protocol, _amount);
-        (bool success, ) = strategy.protocol.call(_strategyData);
+        (bool success, ) = strategy.protocol.call(
+            _venueCalldata(strategy.depositSelector, DEFAULT_DEPOSIT, strategy.depositArgs, _token, _amount)
+        );
         if (!success) revert StrategyCallFailed();
         IERC20(_token).forceApprove(strategy.protocol, 0);
 
@@ -163,25 +176,26 @@ contract IntentVault is ReentrancyGuard {
         emit StrategyExecuted(_user, _intentHash, _strategyId, _token, _amount, positionId);
     }
 
-    /// @dev Build the exit calldata for a venue from its registry-declared shape.
+    /// @dev Build calldata for a venue from its registry-declared shape.
     ///
     ///      The selector and argument order come from the registry (owner-set); the token and
-    ///      amount come from the position (vault-set). Nothing here is caller-supplied, which is
-    ///      the property that keeps this safe: venues pool every user's funds under this vault's
-    ///      single address, so a caller able to choose the withdraw amount could pull more than
-    ///      their own position and bank the difference as free balance.
-    function _withdrawCalldata(
-        StrategyRegistry.Strategy memory _strategy,
+    ///      amount come from the vault's own accounting. Nothing here is caller-supplied, and
+    ///      that is the property doing the security work on both legs: venues pool every user's
+    ///      funds under this vault's single address, so any caller able to choose the selector or
+    ///      the amount could reach other users' principal.
+    function _venueCalldata(
+        bytes4 _selector,
+        bytes4 _default,
+        StrategyRegistry.ArgLayout _args,
         address _token,
         uint256 _amount
     ) internal pure returns (bytes memory) {
-        bytes4 selector = _strategy.withdrawSelector;
-        if (selector == bytes4(0)) selector = bytes4(keccak256("withdraw(address,uint256)"));
+        bytes4 selector = _selector == bytes4(0) ? _default : _selector;
 
-        if (_strategy.withdrawArgs == StrategyRegistry.WithdrawArgs.TokenThenAmount) {
+        if (_args == StrategyRegistry.ArgLayout.TokenThenAmount) {
             return abi.encodeWithSelector(selector, _token, _amount);
         }
-        if (_strategy.withdrawArgs == StrategyRegistry.WithdrawArgs.AmountThenToken) {
+        if (_args == StrategyRegistry.ArgLayout.AmountThenToken) {
             return abi.encodeWithSelector(selector, _amount, _token);
         }
         return abi.encodeWithSelector(selector, _amount);
@@ -202,7 +216,13 @@ contract IntentVault is ReentrancyGuard {
 
         uint256 balanceBefore = token.balanceOf(address(this));
         (bool ok, ) = strategy.protocol.call(
-            _withdrawCalldata(strategy, position.token, position.amount)
+            _venueCalldata(
+                strategy.withdrawSelector,
+                DEFAULT_WITHDRAW,
+                strategy.withdrawArgs,
+                position.token,
+                position.amount
+            )
         );
         if (!ok) revert StrategyExitFailed(_positionId, strategy.protocol);
         returned = token.balanceOf(address(this)) - balanceBefore;

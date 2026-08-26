@@ -181,8 +181,6 @@ def build_plan(state: IntentFlowState) -> IntentFlowState:
             "issued_at": int(time.time()),
         }
     )
-    strategy_data = blockchain.encode_deposit_calldata(token_address, amount_wei)
-
     state["execution_plan"] = ExecutionPlan(
         intent_hash=digest,
         vault_address=settings.vault_address,
@@ -192,9 +190,7 @@ def build_plan(state: IntentFlowState) -> IntentFlowState:
             str(strategy.strategy_id),
             token_address,
             str(amount_wei),
-            strategy_data,
         ],
-        strategy_data=strategy_data,
         token_address=token_address,
         amount_wei=str(amount_wei),
         requires_approval=bool(state.get("requires_approval")),

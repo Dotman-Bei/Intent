@@ -42,7 +42,6 @@ export type ExecutionPlan = {
   vault_address: `0x${string}`;
   function_name: string;
   args: string[];
-  strategy_data: `0x${string}`;
   token_address: `0x${string}`;
   amount_wei: string;
   requires_approval: boolean;

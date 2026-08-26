@@ -116,12 +116,12 @@ legacy-gas workaround. These values are already wired into every `.env.example`.
 | Step | Gas | At 50 gwei |
 |---|---|---|
 | ERC20 approve | 46,371 | 0.0023 BOT |
-| vault deposit | 82,454 | 0.0041 BOT |
+| vault deposit | 82,476 | 0.0041 BOT |
 | approveIntent (HITL) | 45,969 | 0.0023 BOT |
-| executeIntent | 295,607 | 0.0148 BOT |
-| closePosition | 154,508 | 0.0077 BOT |
+| executeIntent | 296,181 | 0.0148 BOT |
+| closePosition | 156,430 | 0.0078 BOT |
 | withdraw | 47,524 | 0.0024 BOT |
-| **full journey** | **672,433** | **0.0336 BOT** |
+| **full journey** | **674,951** | **0.0337 BOT** |
 
 Deploying the three mainnet contracts costs **2,800,920 gas (~0.14 BOT at 50 gwei)**, plus ~184,494
 gas per `addStrategy`. The Challenge's 1 BOT gas grant covers that roughly seven times over.
@@ -142,33 +142,34 @@ npx hardhat run scripts/deploy-mainnet.ts --network botMainnet
 Both need `PRIVATE_KEY` and `AGENT_ADDRESS` in `contracts/.env`; mainnet additionally refuses to run
 without real venue addresses in `MAINNET_STRATEGIES`.
 
-### Every real venue needs its exit declared, and rehearsed
+### Every real venue needs both call shapes declared, and rehearsed
 
-The vault enters a venue with calldata it is handed, but it builds the *exit* call itself, from a
-shape the registry owner declares per strategy:
+The vault builds every protocol call itself, from shapes the registry owner declares per strategy:
 
 ```solidity
+registry.setDepositCall(id, bytes4(keccak256("supply(address,uint256)")), TokenThenAmount);
 registry.setWithdrawCall(id, bytes4(keccak256("redeem(uint256,address)")), AmountThenToken);
 ```
 
-Supported layouts are `withdraw(token, amount)` (the default), `withdraw(amount, token)` and
-`withdraw(amount)`. Anything outside those needs a per-venue adapter contract.
+Supported layouts are `f(token, amount)` (the default), `f(amount, token)` and `f(amount)`.
+Anything outside those needs a per-venue adapter contract.
 
-The amount is deliberately *not* a parameter of `closePosition`. Venues pool every user's funds
-under the vault's single address, so a caller who could choose the withdraw amount would be able to
-pull more than their own position and bank the difference as free balance. Owner declares the
-shape; the vault supplies the numbers.
+Neither the selector nor the amount is a caller parameter. Venues pool every user's funds under the
+vault's single address, so any caller able to choose either could reach other users' principal —
+which is exactly what an earlier design allowed. Owner declares the shape; the vault supplies the
+numbers.
 
-Getting this wrong is unrecoverable — there is no rescue path once tokens have left for a protocol
-that will not return them — and it cannot be checked by inspection, because a venue's `withdraw` is
-state-changing and so cannot be probed with a `staticcall`. So prove it with dust first:
+Getting a shape wrong is unrecoverable on the exit side — there is no rescue path once tokens have
+left for a protocol that will not return them — and neither leg can be checked by inspection,
+because a venue's entry and exit functions are state-changing and so cannot be probed with a
+`staticcall`. So prove both with dust first:
 
 ```bash
 STRATEGY_ID=0 AMOUNT=0.001 npx hardhat run scripts/verify-exit.ts --network botMainnet
 ```
 
-That pushes a trivial amount deposit → execute → close → withdraw and reports whether it came back.
-Run it for every strategy before that strategy sees real money.
+That pushes a trivial amount deposit → execute → close → withdraw and reports which leg failed, if
+either. Run it for every strategy before that strategy sees real money.
 
 ## Live on BOT Chain testnet
 
@@ -195,7 +196,9 @@ Two things the real chain caught that a local node could not:
   expects 32, so every block read raised and the portfolio reported "unavailable" against a chain
   that was answering fine. Fixed with `ExtraDataToPOAMiddleware`.
 - **Measured gas held.** `executeIntent` cost 295,619 gas on testnet against 295,607 measured
-  locally — a 12-unit difference, so the projection maths needs no adjustment.
+  locally — a 12-unit difference, so the projection maths needs no adjustment. Both figures predate
+  moving protocol calldata on-chain, which added 574 units; the table above is re-measured, but the
+  testnet comparison has not been repeated against the new bytecode.
 
 ## Hosting
 
@@ -323,11 +326,17 @@ Model: `claude-opus-5` via the Anthropic SDK's structured outputs (`messages.par
   execute — the vault required `!needsApproval`, so there was no path for a human to approve.
 - **The vault keeps per-user balances.** The guide's `withdraw` would let any depositor drain the
   contract.
-- **The exit call is registry-declared, not a fixed interface.** The guide's vault calls one
-  hardcoded `withdraw(address,uint256)` on every protocol. Real venues disagree on the name and the
-  argument order, and since entry accepts arbitrary calldata, that asymmetry let funds into a venue
-  the vault could never call back out of. `StrategyRegistry` now carries a withdraw selector and
-  argument layout per strategy.
+- **Protocol calldata is registry-declared on both legs, not passed in.** The guide has the vault
+  call one hardcoded `withdraw(address,uint256)` on exit while accepting arbitrary caller calldata
+  on entry. Both halves were wrong. Real venues disagree on names and argument order, so the fixed
+  exit interface stranded funds in any venue that did not match it. And the arbitrary entry
+  calldata was exploitable: the vault approves the position amount to the protocol and then calls
+  it with whatever bytes it was handed, so an attacker could open a 1-token position carrying the
+  venue's *withdraw* calldata, drain the pooled balance every other user's principal sits in, and
+  leave their positions permanently unclosable — the drained tokens landing in the vault
+  unattributed. `executeIntent` therefore takes no calldata parameter at all; `StrategyRegistry`
+  carries a selector and argument layout for each leg, and the vault supplies the token and amount
+  from its own accounting.
 - **OpenZeppelin v5 paths** (`utils/ReentrancyGuard.sol`), and allowances are reset to zero after
   every protocol call.
 
@@ -348,9 +357,7 @@ unverified until the app runs on a real domain. Mock venues still stand in for r
 adapters — mainnet needs real BOT Chain venue addresses (B DEX is the obvious first integration),
 each with its exit shape declared via `setWithdrawCall` and proven by `scripts/verify-exit.ts`.
 
-One asymmetry remains on the entry side: the agent hardcodes `deposit(address,uint256)` when it
-encodes strategy calldata, so a venue with a different entry signature needs that encoder taught
-about it. That one fails safe — `executeIntent` reverts and the tokens never leave the vault —
-which is why it is a papercut rather than the blocker the exit leg was.
+Both legs are now registry-declared. The entry side used to travel as caller-supplied calldata,
+which was not merely inconvenient but exploitable — see the deviations above.
 
 MIT licensed.

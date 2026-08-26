@@ -60,7 +60,6 @@ writeContract({
     BigInt(strategy_id),  <i>// index into StrategyRegistry</i>
     plan.token_address,
     BigInt(plan.amount_wei),
-    plan.strategy_data,   <i>// calldata for the whitelisted protocol</i>
   ],
 });`;
 

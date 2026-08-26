@@ -64,7 +64,6 @@ class ExecutionPlan(BaseModel):
     vault_address: str
     function_name: str = "executeIntent"
     args: list[str]
-    strategy_data: str
     token_address: str
     amount_wei: str
     requires_approval: bool
@@ -103,7 +102,6 @@ class ExecuteRequest(BaseModel):
     strategy_id: int
     token_address: str
     amount_wei: str
-    strategy_data: str
 
 
 class ExecuteResponse(BaseModel):

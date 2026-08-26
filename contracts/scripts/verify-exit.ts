@@ -6,21 +6,22 @@ import * as path from "path";
  * Dust round-trip against one registered venue: deposit -> executeIntent -> closePosition ->
  * withdraw. Run it on every strategy before that strategy sees real money.
  *
- * This exists because exitability cannot be proven from off-chain inspection. A venue's withdraw
- * function is state-changing, so it cannot be probed with a staticcall, and a selector that merely
- * *exists* still tells you nothing about whether the vault's argument order is the one the venue
- * expects. The only honest check is to push a trivial amount all the way through and watch it come
- * back — and to do that before the amounts stop being trivial, because IntentVault has no rescue
- * path once tokens have left for a protocol that will not return them.
+ * Both legs are built on-chain from the venue's registry-declared shapes, so this verifies the
+ * configuration itself, not just the venue. It exists because neither leg can be proven from
+ * off-chain inspection: the venue's functions are state-changing, so they cannot be probed with a
+ * staticcall, and a selector that merely *exists* still tells you nothing about whether the
+ * vault's argument order is the one the venue expects. The only honest check is to push a trivial
+ * amount all the way through and watch it come back — and to do that before the amounts stop
+ * being trivial, because IntentVault has no rescue path once tokens have left for a protocol
+ * that will not return them.
  *
  *   STRATEGY_ID=2 npx hardhat run scripts/verify-exit.ts --network botTestnet
  *
- * Env: STRATEGY_ID (required), AMOUNT (default 0.001), DEPOSIT_SIG (default the mocks' shape).
+ * Env: STRATEGY_ID (required), AMOUNT (default 0.001), TOKEN (default the deployment's test token).
  */
 async function main() {
   const strategyId = BigInt(process.env.STRATEGY_ID ?? "");
   const amount = ethers.parseEther(process.env.AMOUNT || "0.001");
-  const depositSig = process.env.DEPOSIT_SIG || "deposit(address,uint256)";
 
   const deployment = JSON.parse(
     fs.readFileSync(path.join(__dirname, "..", "deployments", `${network.name}.json`), "utf8")
@@ -38,17 +39,22 @@ async function main() {
   const token = await ethers.getContractAt("MockERC20", tokenAddress, signer);
 
   const strategy = await registry.getStrategy(strategyId);
-  const layouts = ["withdraw(token, amount)", "withdraw(amount, token)", "withdraw(amount)"];
-  const selector =
-    strategy.withdrawSelector === "0x00000000"
-      ? `${ethers.id("withdraw(address,uint256)").slice(0, 10)} (default)`
-      : strategy.withdrawSelector;
+  const layouts = ["f(token, amount)", "f(amount, token)", "f(amount)"];
+  const shown = (selector: string, fallback: string) =>
+    selector === "0x00000000" ? `${ethers.id(fallback).slice(0, 10)} (default)` : selector;
 
-  console.log(`network:   ${network.name}`);
-  console.log(`strategy:  #${strategyId} ${strategy.name} @ ${strategy.protocol}`);
-  console.log(`exit call: selector ${selector}, args ${layouts[Number(strategy.withdrawArgs)]}`);
-  console.log(`entry via: ${depositSig}`);
-  console.log(`amount:    ${ethers.formatEther(amount)}\n`);
+  console.log(`network:    ${network.name}`);
+  console.log(`strategy:   #${strategyId} ${strategy.name} @ ${strategy.protocol}`);
+  console.log(
+    `entry call: selector ${shown(strategy.depositSelector, "deposit(address,uint256)")}, ` +
+      `args ${layouts[Number(strategy.depositArgs)]}`
+  );
+  console.log(
+    `exit call:  selector ${shown(strategy.withdrawSelector, "withdraw(address,uint256)")}, ` +
+      `args ${layouts[Number(strategy.withdrawArgs)]}`
+  );
+  console.log(`amount:     ${ethers.formatEther(amount)}
+`);
 
   if (!strategy.active) throw new Error(`strategy #${strategyId} is not active`);
 
@@ -74,13 +80,19 @@ async function main() {
     console.log("approved the rehearsal intent");
   }
 
-  const entryData = new ethers.Interface([`function ${depositSig}`]).encodeFunctionData(
-    depositSig.slice(0, depositSig.indexOf("(")),
-    [tokenAddress, amount]
-  );
-  await (
-    await vault.executeIntent(signer.address, intentHash, strategyId, tokenAddress, amount, entryData)
-  ).wait();
+  try {
+    await (
+      await vault.executeIntent(signer.address, intentHash, strategyId, tokenAddress, amount)
+    ).wait();
+  } catch (error: any) {
+    console.error(`
+✗ ENTRY FAILED — strategy #${strategyId} is not reachable.`);
+    console.error(`  ${error.shortMessage || error.message}`);
+    console.error(`  Fix: registry.setDepositCall(${strategyId}, <selector>, <argLayout>)`);
+    console.error("  Nothing left the vault, so no funds are at risk.");
+    process.exitCode = 1;
+    return;
+  }
   const positionId = (await vault.positionCount(signer.address)) - 1n;
   console.log(`entered: position #${positionId}`);
 
@@ -105,10 +117,10 @@ async function main() {
 
   if (returned < amount) {
     console.warn(`\n⚠ returned less than deposited (${ethers.formatEther(amount - returned)} short).`);
-    console.warn("  Exitable, but the venue does not return full principal — check fees or seeding.");
+    console.warn("  Round-trips, but the venue does not return full principal — check fees or seeding.");
     return;
   }
-  console.log(`\n✓ strategy #${strategyId} is exitable. Safe to route real funds.`);
+  console.log(`\n✓ strategy #${strategyId} round-trips on both legs. Safe to route real funds.`);
 }
 
 main().catch((error) => {

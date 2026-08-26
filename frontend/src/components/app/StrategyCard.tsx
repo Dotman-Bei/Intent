@@ -82,7 +82,6 @@ export function StrategyCard({
         BigInt(strategy.strategy_id),
         plan.token_address,
         amountWei,
-        plan.strategy_data,
       ],
     });
 

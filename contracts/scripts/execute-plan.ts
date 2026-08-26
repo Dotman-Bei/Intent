@@ -16,7 +16,6 @@ type Plan = {
   intent_hash: string;
   vault_address: string;
   args: string[];
-  strategy_data: string;
   token_address: string;
   amount_wei: string;
   requires_approval: boolean;
@@ -70,8 +69,7 @@ async function main() {
     plan.intent_hash,
     strategyId,
     plan.token_address,
-    amount,
-    plan.strategy_data
+    amount
   );
   const receipt = await tx.wait();
   console.log(`executed in block ${receipt?.blockNumber}, gas ${receipt?.gasUsed}`);

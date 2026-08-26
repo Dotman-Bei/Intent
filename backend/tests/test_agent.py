@@ -12,6 +12,7 @@ from app.agent.graph import agent  # noqa: E402
 from app.agent.state import new_state  # noqa: E402
 from app.services import blockchain, simulator  # noqa: E402
 from app.config import _prefix  # noqa: E402
+from app.models.schemas import ExecutionPlan  # noqa: E402
 from app.services.llm import parse_with_rules  # noqa: E402
 
 USER = "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
@@ -140,13 +141,12 @@ class TestChainEncoding:
         b = blockchain.intent_hash({"amount_wei": "2"})
         assert a != b
 
-    def test_deposit_calldata_matches_the_mock_venue_signature(self):
-        token = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-        data = blockchain.encode_deposit_calldata(token, 10**18)
-        # keccak("deposit(address,uint256)")[:4]
-        assert data.startswith("0x47e7ef24")
-        assert data[34:74].lower() == token[2:].lower()
-        assert len(data) == 2 + 8 + 64 * 2
+    def test_the_plan_carries_no_protocol_calldata(self):
+        """Protocol calldata is built on-chain from the venue's registry-declared shape. It used
+        to travel in the plan as a caller-supplied argument, which let a 1-token position carry a
+        venue's *withdraw* calldata and drain every other user's principal."""
+        assert not hasattr(ExecutionPlan, "strategy_data")
+        assert "strategy_data" not in ExecutionPlan.model_fields
 
     def test_wei_conversion_round_trips(self):
         assert blockchain.from_wei(blockchain.to_wei(12.5, 18), 18) == 12.5

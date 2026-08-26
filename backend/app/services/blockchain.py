@@ -14,7 +14,6 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
-from eth_abi import encode as abi_encode
 from web3 import Web3
 from web3.middleware import ExtraDataToPOAMiddleware
 
@@ -28,7 +27,7 @@ ABI_DIR = Path(__file__).resolve().parents[2] / "abi"
 # Gas units for one executeIntent, measured by contracts/scripts/measure-gas.ts against the
 # deployed bytecode. Units are a property of the code, so they travel across networks; the price
 # is not, so it is read live from whichever chain the agent is pointed at.
-EXECUTE_INTENT_GAS = 295_607
+EXECUTE_INTENT_GAS = 296_181
 
 # Only used when the RPC is unreachable: 295,607 units at 20 gwei, the low end of what BOT Chain
 # reports. Flagged as an assumption in the trace rather than presented as a measurement.
@@ -108,16 +107,6 @@ def intent_hash(payload: dict[str, Any]) -> str:
     approval signature all key off this exact string, so it must be produced in one place only."""
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return as_hex(Web3.keccak(text=canonical))
-
-
-def encode_deposit_calldata(token_address: str, amount_wei: int) -> str:
-    """calldata for `deposit(address,uint256)` — the entry point both mock venues expose, and the
-    shape a real adapter would mirror."""
-    selector = Web3.keccak(text="deposit(address,uint256)")[:4]
-    args = abi_encode(
-        ["address", "uint256"], [Web3.to_checksum_address(token_address), amount_wei]
-    )
-    return "0x" + (selector + args).hex()
 
 
 # --- reads ---------------------------------------------------------------
@@ -286,7 +275,6 @@ def agent_execute(
     strategy_id: int,
     token_address: str,
     amount_wei: int,
-    strategy_data: str,
 ) -> str:
     """Broadcast executeIntent from the agent EOA. Only reachable when AGENT_PRIVATE_KEY is set —
     the default deployment leaves this off and lets the user's wallet sign instead."""
@@ -307,7 +295,6 @@ def agent_execute(
         strategy_id,
         Web3.to_checksum_address(token_address),
         amount_wei,
-        bytes.fromhex(strategy_data.removeprefix("0x")),
     ).build_transaction(
         {
             "from": account.address,

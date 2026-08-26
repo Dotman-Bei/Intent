@@ -18,17 +18,19 @@ contract StrategyRegistry {
         // token and amount, so a caller cannot ask a pooled venue for more than they put in.
         // Appended to the struct rather than inserted, so tuple indices 0-5 stay stable for
         // every off-chain reader already decoding this shape.
+        bytes4 depositSelector; // 0x00000000 => deposit(address,uint256)
+        ArgLayout depositArgs;
         bytes4 withdrawSelector; // 0x00000000 => withdraw(address,uint256)
-        WithdrawArgs withdrawArgs;
+        ArgLayout withdrawArgs;
     }
 
-    /// @notice Argument layout of a venue's withdraw function. Real protocols disagree on order
-    ///         and arity, which is the whole reason a single hardcoded interface cannot serve
-    ///         them; anything outside these shapes needs a per-venue adapter contract.
-    enum WithdrawArgs {
-        TokenThenAmount, // withdraw(address token, uint256 amount)
-        AmountThenToken, // withdraw(uint256 amount, address token)
-        AmountOnly // withdraw(uint256 amount)
+    /// @notice Argument layout of a venue's entry or exit function. Real protocols disagree on
+    ///         order and arity, which is the whole reason a single hardcoded interface cannot
+    ///         serve them; anything outside these shapes needs a per-venue adapter contract.
+    enum ArgLayout {
+        TokenThenAmount, // f(address token, uint256 amount)
+        AmountThenToken, // f(uint256 amount, address token)
+        AmountOnly // f(uint256 amount)
     }
 
     mapping(uint256 => Strategy) private _strategies;
@@ -38,7 +40,8 @@ contract StrategyRegistry {
     event StrategyAdded(uint256 indexed id, address protocol, string name);
     event StrategyUpdated(uint256 indexed id, bool active);
     event ApyUpdated(uint256 indexed id, uint256 baseApyBps);
-    event WithdrawCallUpdated(uint256 indexed id, bytes4 selector, WithdrawArgs args);
+    event DepositCallUpdated(uint256 indexed id, bytes4 selector, ArgLayout args);
+    event WithdrawCallUpdated(uint256 indexed id, bytes4 selector, ArgLayout args);
     event OwnershipTransferred(address indexed from, address indexed to);
 
     error NotOwner();
@@ -74,11 +77,13 @@ contract StrategyRegistry {
             riskScore: _riskScore,
             baseApyBps: _baseApyBps,
             active: true,
-            // Defaults to withdraw(address,uint256) — the shape both mock venues expose. A real
-            // protocol almost never matches it, so `setWithdrawCall` is a required step of
-            // registering one, rehearsed by scripts/verify-exit.ts before any real deposit.
+            // Default to the shape both mock venues expose. A real protocol almost never
+            // matches it, so setDepositCall/setWithdrawCall are required steps of registering
+            // one, rehearsed by scripts/verify-exit.ts before any real deposit.
+            depositSelector: bytes4(0),
+            depositArgs: ArgLayout.TokenThenAmount,
             withdrawSelector: bytes4(0),
-            withdrawArgs: WithdrawArgs.TokenThenAmount
+            withdrawArgs: ArgLayout.TokenThenAmount
         });
         emit StrategyAdded(id, _protocol, _name);
     }
@@ -95,12 +100,21 @@ contract StrategyRegistry {
         emit ApyUpdated(_id, _baseApyBps);
     }
 
+    /// @notice Declare how the vault should call this venue to enter a position. Owner-only,
+    ///         because it decides what calldata the vault will emit against real user funds.
+    function setDepositCall(uint256 _id, bytes4 _selector, ArgLayout _args) external onlyOwner {
+        if (_id >= strategyCount) revert UnknownStrategy(_id);
+        _strategies[_id].depositSelector = _selector;
+        _strategies[_id].depositArgs = _args;
+        emit DepositCallUpdated(_id, _selector, _args);
+    }
+
     /// @notice Declare how the vault should call this venue to withdraw. Owner-only, because it
     ///         decides what calldata the vault will emit against real user funds.
     function setWithdrawCall(
         uint256 _id,
         bytes4 _selector,
-        WithdrawArgs _args
+        ArgLayout _args
     ) external onlyOwner {
         if (_id >= strategyCount) revert UnknownStrategy(_id);
         _strategies[_id].withdrawSelector = _selector;

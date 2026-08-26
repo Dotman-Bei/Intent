@@ -35,9 +35,6 @@ async function main() {
   const tokenAddress = await token.getAddress();
   const vaultAddress = await vault.getAddress();
   const hash = ethers.keccak256(ethers.toUtf8Bytes("gas-measurement"));
-  const strategyData = new ethers.Interface([
-    "function deposit(address,uint256)",
-  ]).encodeFunctionData("deposit", [tokenAddress, amount]);
 
   const steps: { label: string; gas: bigint }[] = [];
   const record = async (label: string, run: Promise<{ wait: () => Promise<any> }>) => {
@@ -52,7 +49,7 @@ async function main() {
     "executeIntent",
     vault
       .connect(agent)
-      .executeIntent(user.address, hash, 0, tokenAddress, amount, strategyData) as any
+      .executeIntent(user.address, hash, 0, tokenAddress, amount) as any
   );
   await record("closePosition", vault.connect(user).closePosition(user.address, 0) as any);
   await record("withdraw", vault.connect(user).withdraw(tokenAddress, amount) as any);

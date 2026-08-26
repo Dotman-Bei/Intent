@@ -44,13 +44,6 @@ function intentHash(label: string) {
   return ethers.keccak256(ethers.toUtf8Bytes(label));
 }
 
-function depositCalldata(token: string, amount: bigint) {
-  return new ethers.Interface(["function deposit(address,uint256)"]).encodeFunctionData(
-    "deposit",
-    [token, amount]
-  );
-}
-
 async function depositToVault(
   vault: any,
   token: any,
@@ -150,8 +143,7 @@ describe("IntentVault", () => {
           intentHash("yield-50"),
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         )
     ).to.emit(vault, "StrategyExecuted");
 
@@ -178,8 +170,7 @@ describe("IntentVault", () => {
           hash,
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         );
 
     await expect(call()).to.be.revertedWithCustomError(vault, "ApprovalRequired");
@@ -204,8 +195,7 @@ describe("IntentVault", () => {
           hash,
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         );
 
     await expect(call()).to.be.revertedWithCustomError(vault, "ApprovalRequired");
@@ -228,8 +218,7 @@ describe("IntentVault", () => {
           intentHash("self-exec"),
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         )
     ).to.emit(vault, "StrategyExecuted");
   });
@@ -248,8 +237,7 @@ describe("IntentVault", () => {
           intentHash("steal"),
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         )
     ).to.be.revertedWithCustomError(vault, "NotAuthorized");
   });
@@ -269,8 +257,7 @@ describe("IntentVault", () => {
           hash,
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         );
 
     await call();
@@ -292,8 +279,7 @@ describe("IntentVault", () => {
           intentHash("paused"),
           0,
           await token.getAddress(),
-          amount,
-          depositCalldata(await token.getAddress(), amount)
+          amount
         )
     ).to.be.revertedWithCustomError(vault, "StrategyInactive");
   });
@@ -311,8 +297,7 @@ describe("IntentVault", () => {
           intentHash("too-big"),
           0,
           await token.getAddress(),
-          ethers.parseEther("100"),
-          depositCalldata(await token.getAddress(), ethers.parseEther("100"))
+          ethers.parseEther("100")
         )
     ).to.be.revertedWithCustomError(vault, "InsufficientBalance");
   });
@@ -329,8 +314,7 @@ describe("IntentVault", () => {
         intentHash("close-me"),
         0,
         await token.getAddress(),
-        amount,
-        depositCalldata(await token.getAddress(), amount)
+        amount
       );
 
     await time.increase(365 * 24 * 60 * 60); // one year at 8.5%
@@ -371,8 +355,7 @@ describe("IntentVault", () => {
         intentHash("allowance"),
         0,
         await token.getAddress(),
-        amount,
-        depositCalldata(await token.getAddress(), amount)
+        amount
       );
 
     expect(await token.allowance(await vault.getAddress(), await dex.getAddress())).to.equal(0n);
@@ -391,7 +374,7 @@ describe("IntentVault", () => {
   });
 });
 
-describe("IntentVault — venues that do not speak withdraw(address,uint256)", () => {
+describe("IntentVault — venues that do not speak the default deposit/withdraw shapes", () => {
   const ODD_APY = 700;
 
   /** Registers MockOddVenue, whose exit is `redeem(uint256,address)`. */
@@ -409,11 +392,12 @@ describe("IntentVault — venues that do not speak withdraw(address,uint256)", (
     return { ...base, odd, id };
   }
 
-  function supplyCalldata(token: string, amount: bigint) {
-    return new ethers.Interface(["function supply(address,uint256)"]).encodeFunctionData(
-      "supply",
-      [token, amount]
-    );
+  const SUPPLY = ethers.id("supply(address,uint256)").slice(0, 10);
+  const REDEEM = ethers.id("redeem(uint256,address)").slice(0, 10);
+
+  /** Declare the venue's real entry shape, so executeIntent can reach it at all. */
+  async function declareEntry(f: any) {
+    await f.registry.setDepositCall(f.id, SUPPLY, 0 /* TokenThenAmount */);
   }
 
   async function openPosition(f: any, amount: bigint, label: string) {
@@ -426,13 +410,37 @@ describe("IntentVault — venues that do not speak withdraw(address,uint256)", (
         intentHash(label),
         f.id,
         await f.token.getAddress(),
-        amount,
-        supplyCalldata(await f.token.getAddress(), amount)
+        amount
       );
   }
 
-  it("still opens a position — entry was never the broken half", async () => {
+  it("cannot enter until the owner declares the venue's deposit shape", async () => {
     const f = await withOddVenue();
+    await depositToVault(f.vault, f.token, f.user, ONE * 50n);
+    await f.gate.connect(f.user).setConfig(ONE * 100n);
+
+    // The vault emits deposit(address,uint256); MockOddVenue only has supply(...). Reverting here
+    // is the safe direction — the tokens never leave the vault.
+    await expect(
+      f.vault
+        .connect(f.agent)
+        .executeIntent(
+          f.user.address,
+          intentHash("odd-no-entry"),
+          f.id,
+          await f.token.getAddress(),
+          ONE * 50n
+        )
+    ).to.be.revertedWithCustomError(f.vault, "StrategyCallFailed");
+
+    expect(await f.vault.freeBalance(f.user.address, await f.token.getAddress())).to.equal(
+      ONE * 50n
+    );
+  });
+
+  it("enters once the owner declares the venue's deposit shape", async () => {
+    const f = await withOddVenue();
+    await declareEntry(f);
     await openPosition(f, ONE * 50n, "odd-entry");
 
     expect(
@@ -440,8 +448,23 @@ describe("IntentVault — venues that do not speak withdraw(address,uint256)", (
     ).to.equal(ONE * 50n);
   });
 
+  it("refuses caller-chosen protocol calldata — executeIntent takes no such parameter", async () => {
+    const f = await withOddVenue();
+    // Guards the fix for the drain: a 1-token position could once carry the venue's *withdraw*
+    // calldata and pull every other user's principal out of the pooled balance.
+    const fragment = f.vault.interface.getFunction("executeIntent");
+    expect(fragment.inputs.map((i: any) => i.type)).to.deep.equal([
+      "address",
+      "bytes32",
+      "uint256",
+      "address",
+      "uint256",
+    ]);
+  });
+
   it("cannot exit while the registry still claims the default withdraw signature", async () => {
     const f = await withOddVenue();
+    await declareEntry(f);
     await openPosition(f, ONE * 50n, "odd-stuck");
 
     // This is the pre-fix behaviour, and the reason the fix exists: the vault emits
@@ -454,10 +477,10 @@ describe("IntentVault — venues that do not speak withdraw(address,uint256)", (
 
   it("exits cleanly once the owner declares the venue's real withdraw shape", async () => {
     const f = await withOddVenue();
+    await declareEntry(f);
     await openPosition(f, ONE * 50n, "odd-exit");
 
-    const redeem = ethers.id("redeem(uint256,address)").slice(0, 10);
-    await f.registry.setWithdrawCall(f.id, redeem, 1 /* AmountThenToken */);
+    await f.registry.setWithdrawCall(f.id, REDEEM, 1 /* AmountThenToken */);
 
     await expect(f.vault.connect(f.user).closePosition(f.user.address, 0)).to.not.be.reverted;
 
@@ -470,6 +493,7 @@ describe("IntentVault — venues that do not speak withdraw(address,uint256)", (
 
   it("keeps the withdraw amount vault-controlled, so a caller cannot drain the pool", async () => {
     const f = await withOddVenue();
+    await declareEntry(f);
     const tokenAddress = await f.token.getAddress();
 
     // Two users supply into the same venue; the venue sees one depositor — the vault.
@@ -484,16 +508,14 @@ describe("IntentVault — venues that do not speak withdraw(address,uint256)", (
         intentHash("odd-victim-b"),
         f.id,
         tokenAddress,
-        ONE * 100n,
-        supplyCalldata(tokenAddress, ONE * 100n)
+        ONE * 100n
       );
 
     expect(await f.odd.balanceOfDepositor(await f.vault.getAddress(), tokenAddress)).to.equal(
       ONE * 150n
     );
 
-    const redeem = ethers.id("redeem(uint256,address)").slice(0, 10);
-    await f.registry.setWithdrawCall(f.id, redeem, 1);
+    await f.registry.setWithdrawCall(f.id, REDEEM, 1);
 
     // closePosition takes no amount from the caller — it is read from the position — so the
     // first user can only ever pull their own 50 back out of the pooled 150.

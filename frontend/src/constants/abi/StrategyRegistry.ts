@@ -61,6 +61,31 @@ export const StrategyRegistryABI = [
     "inputs": [
       {
         "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes4",
+        "name": "selector",
+        "type": "bytes4"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum StrategyRegistry.ArgLayout",
+        "name": "args",
+        "type": "uint8"
+      }
+    ],
+    "name": "DepositCallUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "address",
         "name": "from",
         "type": "address"
@@ -136,7 +161,7 @@ export const StrategyRegistryABI = [
       },
       {
         "indexed": false,
-        "internalType": "enum StrategyRegistry.WithdrawArgs",
+        "internalType": "enum StrategyRegistry.ArgLayout",
         "name": "args",
         "type": "uint8"
       }
@@ -226,11 +251,21 @@ export const StrategyRegistryABI = [
           },
           {
             "internalType": "bytes4",
+            "name": "depositSelector",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "enum StrategyRegistry.ArgLayout",
+            "name": "depositArgs",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes4",
             "name": "withdrawSelector",
             "type": "bytes4"
           },
           {
-            "internalType": "enum StrategyRegistry.WithdrawArgs",
+            "internalType": "enum StrategyRegistry.ArgLayout",
             "name": "withdrawArgs",
             "type": "uint8"
           }
@@ -287,11 +322,21 @@ export const StrategyRegistryABI = [
           },
           {
             "internalType": "bytes4",
+            "name": "depositSelector",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "enum StrategyRegistry.ArgLayout",
+            "name": "depositArgs",
+            "type": "uint8"
+          },
+          {
+            "internalType": "bytes4",
             "name": "withdrawSelector",
             "type": "bytes4"
           },
           {
-            "internalType": "enum StrategyRegistry.WithdrawArgs",
+            "internalType": "enum StrategyRegistry.ArgLayout",
             "name": "withdrawArgs",
             "type": "uint8"
           }
@@ -362,6 +407,29 @@ export const StrategyRegistryABI = [
         "type": "uint256"
       },
       {
+        "internalType": "bytes4",
+        "name": "_selector",
+        "type": "bytes4"
+      },
+      {
+        "internalType": "enum StrategyRegistry.ArgLayout",
+        "name": "_args",
+        "type": "uint8"
+      }
+    ],
+    "name": "setDepositCall",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_id",
+        "type": "uint256"
+      },
+      {
         "internalType": "bool",
         "name": "_active",
         "type": "bool"
@@ -385,7 +453,7 @@ export const StrategyRegistryABI = [
         "type": "bytes4"
       },
       {
-        "internalType": "enum StrategyRegistry.WithdrawArgs",
+        "internalType": "enum StrategyRegistry.ArgLayout",
         "name": "_args",
         "type": "uint8"
       }
