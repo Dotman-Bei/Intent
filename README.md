@@ -173,20 +173,33 @@ either. Run it for every strategy before that strategy sees real money.
 
 ## Live on BOT Chain testnet
 
-Deployed and verified on chain 968, 2026-08-19. Every contract is source-verified on
-BOTScan, and the executor has completed a real intent → approve → execute cycle on the public chain.
+Redeployed on chain 968, 2026-08-26, after protocol calldata moved on-chain. The executor has
+completed a real intent → approve → execute cycle against these addresses, and both venues have
+passed a dust round-trip on both legs.
+
+**The 2026-08-19 deployment is superseded and must not be used.** It carries the caller-supplied
+entry calldata described under *Deliberate deviations* — an attacker could open a 1-token position
+carrying a venue's withdraw calldata and strand every other position in that venue. Nothing points
+at those addresses any more; they are listed nowhere below deliberately.
 
 | Contract | Address |
 |---|---|
-| IntentVault | [`0xA81892804776bF57e7CD9b2B1F93a317287B3656`](https://scan.bohr.life/address/0xA81892804776bF57e7CD9b2B1F93a317287B3656#code) |
-| StrategyRegistry | [`0x657577C94BF8f6c9eDB2aF657775292a763A8d2e`](https://scan.bohr.life/address/0x657577C94BF8f6c9eDB2aF657775292a763A8d2e#code) |
-| ApprovalGate | [`0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106`](https://scan.bohr.life/address/0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106#code) |
-| MockDEX (venue 0) | [`0x799d861971c7F73CA1a43465321Bc9B4E9D7f20c`](https://scan.bohr.life/address/0x799d861971c7F73CA1a43465321Bc9B4E9D7f20c#code) |
-| MockLendingPool (venue 1) | [`0xeE281Cba108BBa981ADD72E5af592B13C892f4C0`](https://scan.bohr.life/address/0xeE281Cba108BBa981ADD72E5af592B13C892f4C0#code) |
-| Test token (faucet) | [`0x765ed84c136de5503514f571675B69375cd7897D`](https://scan.bohr.life/address/0x765ed84c136de5503514f571675B69375cd7897D#code) |
+| IntentVault | [`0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2`](https://scan.bohr.life/address/0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2) |
+| StrategyRegistry | [`0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67`](https://scan.bohr.life/address/0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67) |
+| ApprovalGate | [`0x0ef0864E04134E1DF9a024a8DbdAF847deD04105`](https://scan.bohr.life/address/0x0ef0864E04134E1DF9a024a8DbdAF847deD04105) |
+| MockDEX (venue 0) | [`0xC4018572e4cE7b38E4Baa8683FCD88E90B034778`](https://scan.bohr.life/address/0xC4018572e4cE7b38E4Baa8683FCD88E90B034778) |
+| MockLendingPool (venue 1) | [`0xf014B745EF4A7F2C55C5427983bcC243F1726fe4`](https://scan.bohr.life/address/0xf014B745EF4A7F2C55C5427983bcC243F1726fe4) |
+| Test token (faucet) | [`0xd7515912FC63D6484c0fDd4eA9930b17a15659f9`](https://scan.bohr.life/address/0xd7515912FC63D6484c0fDd4eA9930b17a15659f9) |
 
-First live execution — 50 wBOT into BOTSwap Stable Pool, block 20,460,519:
-[`0x44f670…ff39`](https://scan.bohr.life/tx/0x44f670682e835357ebbf7cd01e7dbeb0a2c21d5877d433a9ecf48f533fceff39)
+Source verification on BOTScan is still pending — it needs `BOTSCAN_API_KEY` in `contracts/.env`,
+which is why these links point at the address rather than its verified source.
+
+First live execution against this deployment — 50 wBOT into BOTSwap Stable Pool, block 21,241,453:
+[`0x59f0b4…2439`](https://scan.bohr.life/tx/0x59f0b4b1d966ff8bbabccfce80e965621ed84aaed577f67f7f2dc07132352439)
+
+Both venues also passed `verify-exit.ts` at 0.001 wBOT before that, returning
+`0.001000000010781329` and `0.001000000015728056` — principal plus the seconds of yield that
+elapsed between entering and closing.
 
 `npx hardhat run scripts/show-deployment.ts --network botTestnet` prints this live from chain state.
 
@@ -195,10 +208,10 @@ Two things the real chain caught that a local node could not:
 - **BOT Chain is Proof-of-Authority.** Its block headers carry a 277-byte `extraData` where web3.py
   expects 32, so every block read raised and the portfolio reported "unavailable" against a chain
   that was answering fine. Fixed with `ExtraDataToPOAMiddleware`.
-- **Measured gas held.** `executeIntent` cost 295,619 gas on testnet against 295,607 measured
-  locally — a 12-unit difference, so the projection maths needs no adjustment. Both figures predate
-  moving protocol calldata on-chain, which added 574 units; the table above is re-measured, but the
-  testnet comparison has not been repeated against the new bytecode.
+- **Measured gas held.** On the current bytecode `executeIntent` cost 261,993 gas on testnet
+  against 296,181 measured locally. The local figure is the higher one because it measures a user
+  who has never configured an approval threshold, which writes more state — so the projection
+  maths errs toward overstating cost, which is the safe direction.
 
 ## Hosting
 
@@ -224,10 +237,10 @@ NEXT_PUBLIC_CHAIN_NAME=BOT Chain Testnet
 NEXT_PUBLIC_RPC_URL=https://rpc.bohr.life
 NEXT_PUBLIC_EXPLORER_URL=https://scan.bohr.life
 NEXT_PUBLIC_IS_TESTNET=true
-NEXT_PUBLIC_INTENT_VAULT=0xA81892804776bF57e7CD9b2B1F93a317287B3656
-NEXT_PUBLIC_STRATEGY_REGISTRY=0x657577C94BF8f6c9eDB2aF657775292a763A8d2e
-NEXT_PUBLIC_APPROVAL_GATE=0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106
-NEXT_PUBLIC_TEST_TOKEN=0x765ed84c136de5503514f571675B69375cd7897D
+NEXT_PUBLIC_INTENT_VAULT=0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2
+NEXT_PUBLIC_STRATEGY_REGISTRY=0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67
+NEXT_PUBLIC_APPROVAL_GATE=0x0ef0864E04134E1DF9a024a8DbdAF847deD04105
+NEXT_PUBLIC_TEST_TOKEN=0xd7515912FC63D6484c0fDd4eA9930b17a15659f9
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 NEXT_PUBLIC_AGENT_API=/api/backend
 API_PREFIX=/api/backend
@@ -236,10 +249,10 @@ ANTHROPIC_MODEL=claude-opus-5
 BOT_RPC_URL=https://rpc.bohr.life
 CHAIN_ID=968
 EXPLORER_URL=https://scan.bohr.life
-STRATEGY_REGISTRY_ADDRESS=0x657577C94BF8f6c9eDB2aF657775292a763A8d2e
-INTENT_VAULT_ADDRESS=0xA81892804776bF57e7CD9b2B1F93a317287B3656
-APPROVAL_GATE_ADDRESS=0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106
-TEST_TOKEN_ADDRESS=0x765ed84c136de5503514f571675B69375cd7897D
+STRATEGY_REGISTRY_ADDRESS=0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67
+INTENT_VAULT_ADDRESS=0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2
+APPROVAL_GATE_ADDRESS=0x0ef0864E04134E1DF9a024a8DbdAF847deD04105
+TEST_TOKEN_ADDRESS=0xd7515912FC63D6484c0fDd4eA9930b17a15659f9
 TOKEN_DECIMALS=18
 AGENT_PRIVATE_KEY=
 DEFAULT_APPROVAL_THRESHOLD=100

@@ -30,13 +30,13 @@ services:
         value: https://scan.bohr.life
 
       - key: STRATEGY_REGISTRY_ADDRESS
-        value: "0x657577C94BF8f6c9eDB2aF657775292a763A8d2e"
+        value: "0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67"
       - key: INTENT_VAULT_ADDRESS
-        value: "0xA81892804776bF57e7CD9b2B1F93a317287B3656"
+        value: "0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2"
       - key: APPROVAL_GATE_ADDRESS
-        value: "0xc90e6Fc2Fc04150D9826FFdB0c6F5c047D909106"
+        value: "0x0ef0864E04134E1DF9a024a8DbdAF847deD04105"
       - key: TEST_TOKEN_ADDRESS
-        value: "0x765ed84c136de5503514f571675B69375cd7897D"
+        value: "0xd7515912FC63D6484c0fDd4eA9930b17a15659f9"
       - key: TOKEN_DECIMALS
         value: "18"
 

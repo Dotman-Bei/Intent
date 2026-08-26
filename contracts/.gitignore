@@ -4,3 +4,4 @@ artifacts
 cache
 typechain-types
 deployments/localhost.json
+.wallet-backup.txt
