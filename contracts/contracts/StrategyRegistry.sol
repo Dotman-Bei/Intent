@@ -13,6 +13,22 @@ contract StrategyRegistry {
         uint256 riskScore; // 1-10, 1 = lowest
         uint256 baseApyBps; // advertised APY in basis points, 850 = 8.50%
         bool active;
+        // How IntentVault must call this venue to exit a position. Owner-set, never user-set:
+        // the vault builds the calldata itself from these two fields plus the position's own
+        // token and amount, so a caller cannot ask a pooled venue for more than they put in.
+        // Appended to the struct rather than inserted, so tuple indices 0-5 stay stable for
+        // every off-chain reader already decoding this shape.
+        bytes4 withdrawSelector; // 0x00000000 => withdraw(address,uint256)
+        WithdrawArgs withdrawArgs;
+    }
+
+    /// @notice Argument layout of a venue's withdraw function. Real protocols disagree on order
+    ///         and arity, which is the whole reason a single hardcoded interface cannot serve
+    ///         them; anything outside these shapes needs a per-venue adapter contract.
+    enum WithdrawArgs {
+        TokenThenAmount, // withdraw(address token, uint256 amount)
+        AmountThenToken, // withdraw(uint256 amount, address token)
+        AmountOnly // withdraw(uint256 amount)
     }
 
     mapping(uint256 => Strategy) private _strategies;
@@ -22,6 +38,7 @@ contract StrategyRegistry {
     event StrategyAdded(uint256 indexed id, address protocol, string name);
     event StrategyUpdated(uint256 indexed id, bool active);
     event ApyUpdated(uint256 indexed id, uint256 baseApyBps);
+    event WithdrawCallUpdated(uint256 indexed id, bytes4 selector, WithdrawArgs args);
     event OwnershipTransferred(address indexed from, address indexed to);
 
     error NotOwner();
@@ -56,7 +73,12 @@ contract StrategyRegistry {
             protocolType: _protocolType,
             riskScore: _riskScore,
             baseApyBps: _baseApyBps,
-            active: true
+            active: true,
+            // Defaults to withdraw(address,uint256) — the shape both mock venues expose. A real
+            // protocol almost never matches it, so `setWithdrawCall` is a required step of
+            // registering one, rehearsed by scripts/verify-exit.ts before any real deposit.
+            withdrawSelector: bytes4(0),
+            withdrawArgs: WithdrawArgs.TokenThenAmount
         });
         emit StrategyAdded(id, _protocol, _name);
     }
@@ -71,6 +93,19 @@ contract StrategyRegistry {
         if (_id >= strategyCount) revert UnknownStrategy(_id);
         _strategies[_id].baseApyBps = _baseApyBps;
         emit ApyUpdated(_id, _baseApyBps);
+    }
+
+    /// @notice Declare how the vault should call this venue to withdraw. Owner-only, because it
+    ///         decides what calldata the vault will emit against real user funds.
+    function setWithdrawCall(
+        uint256 _id,
+        bytes4 _selector,
+        WithdrawArgs _args
+    ) external onlyOwner {
+        if (_id >= strategyCount) revert UnknownStrategy(_id);
+        _strategies[_id].withdrawSelector = _selector;
+        _strategies[_id].withdrawArgs = _args;
+        emit WithdrawCallUpdated(_id, _selector, _args);
     }
 
     function transferOwnership(address _newOwner) external onlyOwner {

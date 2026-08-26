@@ -142,6 +142,34 @@ npx hardhat run scripts/deploy-mainnet.ts --network botMainnet
 Both need `PRIVATE_KEY` and `AGENT_ADDRESS` in `contracts/.env`; mainnet additionally refuses to run
 without real venue addresses in `MAINNET_STRATEGIES`.
 
+### Every real venue needs its exit declared, and rehearsed
+
+The vault enters a venue with calldata it is handed, but it builds the *exit* call itself, from a
+shape the registry owner declares per strategy:
+
+```solidity
+registry.setWithdrawCall(id, bytes4(keccak256("redeem(uint256,address)")), AmountThenToken);
+```
+
+Supported layouts are `withdraw(token, amount)` (the default), `withdraw(amount, token)` and
+`withdraw(amount)`. Anything outside those needs a per-venue adapter contract.
+
+The amount is deliberately *not* a parameter of `closePosition`. Venues pool every user's funds
+under the vault's single address, so a caller who could choose the withdraw amount would be able to
+pull more than their own position and bank the difference as free balance. Owner declares the
+shape; the vault supplies the numbers.
+
+Getting this wrong is unrecoverable — there is no rescue path once tokens have left for a protocol
+that will not return them — and it cannot be checked by inspection, because a venue's `withdraw` is
+state-changing and so cannot be probed with a `staticcall`. So prove it with dust first:
+
+```bash
+STRATEGY_ID=0 AMOUNT=0.001 npx hardhat run scripts/verify-exit.ts --network botMainnet
+```
+
+That pushes a trivial amount deposit → execute → close → withdraw and reports whether it came back.
+Run it for every strategy before that strategy sees real money.
+
 ## Live on BOT Chain testnet
 
 Deployed and verified on chain 968, 2026-08-19. Every contract is source-verified on
@@ -295,6 +323,11 @@ Model: `claude-opus-5` via the Anthropic SDK's structured outputs (`messages.par
   execute — the vault required `!needsApproval`, so there was no path for a human to approve.
 - **The vault keeps per-user balances.** The guide's `withdraw` would let any depositor drain the
   contract.
+- **The exit call is registry-declared, not a fixed interface.** The guide's vault calls one
+  hardcoded `withdraw(address,uint256)` on every protocol. Real venues disagree on the name and the
+  argument order, and since entry accepts arbitrary calldata, that asymmetry let funds into a venue
+  the vault could never call back out of. `StrategyRegistry` now carries a withdraw selector and
+  argument layout per strategy.
 - **OpenZeppelin v5 paths** (`utils/ReentrancyGuard.sol`), and allowances are reset to zero after
   every protocol call.
 
@@ -312,6 +345,12 @@ Not yet done: **no mainnet deployment and no public demo URL**. Testnet is live 
 is public, so what remains is a funded mainnet key and a hosted frontend — both config, not code.
 The browser wallet path is built but has only been exercised through a local signer, so it stays
 unverified until the app runs on a real domain. Mock venues still stand in for real protocol
-adapters — mainnet needs real BOT Chain venue addresses (B DEX is the obvious first integration).
+adapters — mainnet needs real BOT Chain venue addresses (B DEX is the obvious first integration),
+each with its exit shape declared via `setWithdrawCall` and proven by `scripts/verify-exit.ts`.
+
+One asymmetry remains on the entry side: the agent hardcodes `deposit(address,uint256)` when it
+encodes strategy calldata, so a venue with a different entry signature needs that encoder taught
+about it. That one fails safe — `executeIntent` reverts and the tokens never leave the vault —
+which is why it is a papercut rather than the blocker the exit leg was.
 
 MIT licensed.

@@ -390,3 +390,117 @@ describe("IntentVault", () => {
     );
   });
 });
+
+describe("IntentVault — venues that do not speak withdraw(address,uint256)", () => {
+  const ODD_APY = 700;
+
+  /** Registers MockOddVenue, whose exit is `redeem(uint256,address)`. */
+  async function withOddVenue() {
+    const base = await deployFixture();
+    const odd = await (await ethers.getContractFactory("MockOddVenue")).deploy();
+    const id = 2n;
+    await base.registry.addStrategy(
+      await odd.getAddress(),
+      "OddSwap Vault",
+      "DEX",
+      3,
+      ODD_APY
+    );
+    return { ...base, odd, id };
+  }
+
+  function supplyCalldata(token: string, amount: bigint) {
+    return new ethers.Interface(["function supply(address,uint256)"]).encodeFunctionData(
+      "supply",
+      [token, amount]
+    );
+  }
+
+  async function openPosition(f: any, amount: bigint, label: string) {
+    await depositToVault(f.vault, f.token, f.user, amount);
+    await f.gate.connect(f.user).setConfig(amount * 2n);
+    await f.vault
+      .connect(f.agent)
+      .executeIntent(
+        f.user.address,
+        intentHash(label),
+        f.id,
+        await f.token.getAddress(),
+        amount,
+        supplyCalldata(await f.token.getAddress(), amount)
+      );
+  }
+
+  it("still opens a position — entry was never the broken half", async () => {
+    const f = await withOddVenue();
+    await openPosition(f, ONE * 50n, "odd-entry");
+
+    expect(
+      await f.odd.balanceOfDepositor(await f.vault.getAddress(), await f.token.getAddress())
+    ).to.equal(ONE * 50n);
+  });
+
+  it("cannot exit while the registry still claims the default withdraw signature", async () => {
+    const f = await withOddVenue();
+    await openPosition(f, ONE * 50n, "odd-stuck");
+
+    // This is the pre-fix behaviour, and the reason the fix exists: the vault emits
+    // withdraw(address,uint256), MockOddVenue has no such function, the call reverts, and the
+    // position can never be closed. There is no rescue path, so the tokens are simply gone.
+    await expect(f.vault.connect(f.user).closePosition(f.user.address, 0))
+      .to.be.revertedWithCustomError(f.vault, "StrategyExitFailed")
+      .withArgs(0, await f.odd.getAddress());
+  });
+
+  it("exits cleanly once the owner declares the venue's real withdraw shape", async () => {
+    const f = await withOddVenue();
+    await openPosition(f, ONE * 50n, "odd-exit");
+
+    const redeem = ethers.id("redeem(uint256,address)").slice(0, 10);
+    await f.registry.setWithdrawCall(f.id, redeem, 1 /* AmountThenToken */);
+
+    await expect(f.vault.connect(f.user).closePosition(f.user.address, 0)).to.not.be.reverted;
+
+    expect(await f.vault.freeBalance(f.user.address, await f.token.getAddress())).to.equal(
+      ONE * 50n
+    );
+    const position = await f.vault.getPosition(f.user.address, 0);
+    expect(position.active).to.equal(false);
+  });
+
+  it("keeps the withdraw amount vault-controlled, so a caller cannot drain the pool", async () => {
+    const f = await withOddVenue();
+    const tokenAddress = await f.token.getAddress();
+
+    // Two users supply into the same venue; the venue sees one depositor — the vault.
+    await openPosition(f, ONE * 50n, "odd-victim-a");
+    await f.token.transfer(f.other.address, ONE * 100n);
+    await depositToVault(f.vault, f.token, f.other, ONE * 100n);
+    await f.gate.connect(f.other).setConfig(ONE * 1000n);
+    await f.vault
+      .connect(f.other)
+      .executeIntent(
+        f.other.address,
+        intentHash("odd-victim-b"),
+        f.id,
+        tokenAddress,
+        ONE * 100n,
+        supplyCalldata(tokenAddress, ONE * 100n)
+      );
+
+    expect(await f.odd.balanceOfDepositor(await f.vault.getAddress(), tokenAddress)).to.equal(
+      ONE * 150n
+    );
+
+    const redeem = ethers.id("redeem(uint256,address)").slice(0, 10);
+    await f.registry.setWithdrawCall(f.id, redeem, 1);
+
+    // closePosition takes no amount from the caller — it is read from the position — so the
+    // first user can only ever pull their own 50 back out of the pooled 150.
+    await f.vault.connect(f.user).closePosition(f.user.address, 0);
+    expect(await f.vault.freeBalance(f.user.address, tokenAddress)).to.equal(ONE * 50n);
+    expect(await f.odd.balanceOfDepositor(await f.vault.getAddress(), tokenAddress)).to.equal(
+      ONE * 100n
+    );
+  });
+});

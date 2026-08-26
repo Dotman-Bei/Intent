@@ -105,6 +105,22 @@ export const IntentVaultABI = [
     "inputs": [
       {
         "internalType": "uint256",
+        "name": "positionId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "protocol",
+        "type": "address"
+      }
+    ],
+    "name": "StrategyExitFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
         "name": "strategyId",
         "type": "uint256"
       }

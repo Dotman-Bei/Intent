@@ -120,6 +120,31 @@ export const StrategyRegistryABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "id",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes4",
+        "name": "selector",
+        "type": "bytes4"
+      },
+      {
+        "indexed": false,
+        "internalType": "enum StrategyRegistry.WithdrawArgs",
+        "name": "args",
+        "type": "uint8"
+      }
+    ],
+    "name": "WithdrawCallUpdated",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -198,6 +223,16 @@ export const StrategyRegistryABI = [
             "internalType": "bool",
             "name": "active",
             "type": "bool"
+          },
+          {
+            "internalType": "bytes4",
+            "name": "withdrawSelector",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "enum StrategyRegistry.WithdrawArgs",
+            "name": "withdrawArgs",
+            "type": "uint8"
           }
         ],
         "internalType": "struct StrategyRegistry.Strategy[]",
@@ -249,6 +284,16 @@ export const StrategyRegistryABI = [
             "internalType": "bool",
             "name": "active",
             "type": "bool"
+          },
+          {
+            "internalType": "bytes4",
+            "name": "withdrawSelector",
+            "type": "bytes4"
+          },
+          {
+            "internalType": "enum StrategyRegistry.WithdrawArgs",
+            "name": "withdrawArgs",
+            "type": "uint8"
           }
         ],
         "internalType": "struct StrategyRegistry.Strategy",
@@ -323,6 +368,29 @@ export const StrategyRegistryABI = [
       }
     ],
     "name": "setStrategyActive",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_id",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes4",
+        "name": "_selector",
+        "type": "bytes4"
+      },
+      {
+        "internalType": "enum StrategyRegistry.WithdrawArgs",
+        "name": "_args",
+        "type": "uint8"
+      }
+    ],
+    "name": "setWithdrawCall",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

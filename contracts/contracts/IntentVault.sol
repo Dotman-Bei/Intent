@@ -7,10 +7,6 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "./StrategyRegistry.sol";
 import "./ApprovalGate.sol";
 
-interface IStrategyProtocol {
-    function withdraw(address token, uint256 amount) external returns (uint256);
-}
-
 /// @title IntentVault
 /// @notice Custody + execution for IntentFlow. Users deposit, the agent (or the user) executes a
 ///         registry-whitelisted strategy against an intent hash, and positions are tracked on-chain
@@ -69,6 +65,7 @@ contract IntentVault is ReentrancyGuard {
     error UnknownPosition(uint256 positionId);
     error PositionNotActive(uint256 positionId);
     error StrategyCallFailed();
+    error StrategyExitFailed(uint256 positionId, address protocol);
 
     modifier onlyOwner() {
         if (msg.sender != owner) revert NotOwner();
@@ -166,6 +163,30 @@ contract IntentVault is ReentrancyGuard {
         emit StrategyExecuted(_user, _intentHash, _strategyId, _token, _amount, positionId);
     }
 
+    /// @dev Build the exit calldata for a venue from its registry-declared shape.
+    ///
+    ///      The selector and argument order come from the registry (owner-set); the token and
+    ///      amount come from the position (vault-set). Nothing here is caller-supplied, which is
+    ///      the property that keeps this safe: venues pool every user's funds under this vault's
+    ///      single address, so a caller able to choose the withdraw amount could pull more than
+    ///      their own position and bank the difference as free balance.
+    function _withdrawCalldata(
+        StrategyRegistry.Strategy memory _strategy,
+        address _token,
+        uint256 _amount
+    ) internal pure returns (bytes memory) {
+        bytes4 selector = _strategy.withdrawSelector;
+        if (selector == bytes4(0)) selector = bytes4(keccak256("withdraw(address,uint256)"));
+
+        if (_strategy.withdrawArgs == StrategyRegistry.WithdrawArgs.TokenThenAmount) {
+            return abi.encodeWithSelector(selector, _token, _amount);
+        }
+        if (_strategy.withdrawArgs == StrategyRegistry.WithdrawArgs.AmountThenToken) {
+            return abi.encodeWithSelector(selector, _amount, _token);
+        }
+        return abi.encodeWithSelector(selector, _amount);
+    }
+
     /// @notice Pull a position back out of its protocol. Whatever comes back (principal + yield)
     ///         lands in the free balance of the user, ready to withdraw.
     function closePosition(
@@ -180,7 +201,10 @@ contract IntentVault is ReentrancyGuard {
         IERC20 token = IERC20(position.token);
 
         uint256 balanceBefore = token.balanceOf(address(this));
-        IStrategyProtocol(strategy.protocol).withdraw(position.token, position.amount);
+        (bool ok, ) = strategy.protocol.call(
+            _withdrawCalldata(strategy, position.token, position.amount)
+        );
+        if (!ok) revert StrategyExitFailed(_positionId, strategy.protocol);
         returned = token.balanceOf(address(this)) - balanceBefore;
 
         position.active = false;
