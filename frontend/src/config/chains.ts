@@ -1,10 +1,16 @@
 import { defineChain } from "viem";
 
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 12345);
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://testnet-rpc.botchain.ai";
-const EXPLORER = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://testnet-explorer.botchain.ai";
-const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME || "BOT Chain Testnet";
-const IS_TESTNET = (process.env.NEXT_PUBLIC_IS_TESTNET || "true") === "true";
+/**
+ * Defaults are BOT Chain MAINNET (677). They used to be testnet, which meant a missing or
+ * unloaded env silently produced an app that called itself "BOT Chain Testnet" and pointed at
+ * a hostname that does not resolve — failing towards a claim about which chain the user's funds
+ * are on is the wrong direction to fail in. Testnet is now the explicit opt-in.
+ */
+const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 677);
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL || "https://rpc.botchain.ai";
+const EXPLORER = process.env.NEXT_PUBLIC_EXPLORER_URL || "https://scan.botchain.ai";
+const CHAIN_NAME = process.env.NEXT_PUBLIC_CHAIN_NAME || "BOT Chain";
+const IS_TESTNET = (process.env.NEXT_PUBLIC_IS_TESTNET || "false") === "true";
 
 /**
  * One chain object, driven entirely by env. Switching the whole app from testnet to mainnet is an

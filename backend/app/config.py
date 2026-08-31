@@ -36,9 +36,14 @@ class Settings:
     anthropic_model: str = os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
 
     # Chain
-    rpc_url: str = os.getenv("BOT_RPC_URL", "https://testnet-rpc.botchain.ai")
-    chain_id: int = int(os.getenv("CHAIN_ID", "12345"))
-    explorer_url: str = os.getenv("EXPLORER_URL", "https://testnet-explorer.botchain.ai")
+    # Defaults are BOT Chain MAINNET (677), matching the frontend's. They used to be a
+    # placeholder chain id and a hostname that does not resolve, so a backend started without a
+    # .env answered for a chain that does not exist while the frontend spoke to 677 — the agent
+    # would hand out plans keyed to the wrong chain id. Failing towards the live chain both
+    # halves already agree on is the only safe default.
+    rpc_url: str = os.getenv("BOT_RPC_URL", "https://rpc.botchain.ai")
+    chain_id: int = int(os.getenv("CHAIN_ID", "677"))
+    explorer_url: str = os.getenv("EXPLORER_URL", "https://scan.botchain.ai")
     registry_address: str = os.getenv("STRATEGY_REGISTRY_ADDRESS", "")
     vault_address: str = os.getenv("INTENT_VAULT_ADDRESS", "")
     approval_gate_address: str = os.getenv("APPROVAL_GATE_ADDRESS", "")

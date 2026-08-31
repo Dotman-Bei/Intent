@@ -5,7 +5,7 @@ import { useAccount, useWaitForTransactionReceipt, useWriteContract } from "wagm
 
 import { ArrowRight } from "@/components/Icons";
 import { CopyInline } from "@/components/Terminal";
-import { txUrl } from "@/config/chains";
+import { botChain, txUrl } from "@/config/chains";
 import {
   APPROVAL_GATE_ABI,
   APPROVAL_GATE_ADDRESS,
@@ -68,10 +68,17 @@ export function StrategyCard({
 
   const amountWei = BigInt(plan.amount_wei);
   const fundsShort = freeBalance < amountWei;
+
+  // The agent stamps every plan with the chain it was built for. If the backend is pointed at a
+  // different chain than this build, the intent hash, the vault address and the strategy id all
+  // refer to somewhere else — and the wallet would happily sign it against whatever is in front
+  // of it. Refuse rather than let a cross-chain plan reach a signature prompt.
+  const planChainMismatch = plan.chain_id !== botChain.id;
   const needsSignature = response.requires_approval && !approved;
   const executed = executionReceipt.isSuccess;
 
-  const execute = () =>
+  const execute = () => {
+    if (planChainMismatch) return;
     execution.writeContract({
       address: INTENT_VAULT_ADDRESS,
       abi: INTENT_VAULT_ABI,
@@ -84,14 +91,17 @@ export function StrategyCard({
         amountWei,
       ],
     });
+  };
 
-  const approveIntent = () =>
+  const approveIntent = () => {
+    if (planChainMismatch) return;
     approval.writeContract({
       address: APPROVAL_GATE_ADDRESS,
       abi: APPROVAL_GATE_ABI,
       functionName: "approveIntent",
       args: [plan.intent_hash],
     });
+  };
 
   const error =
     firstLine(execution.error) ??
@@ -155,6 +165,17 @@ export function StrategyCard({
           <CopyInline value={plan.intent_hash} label={`intent ${shortHash(plan.intent_hash, 12)}`} />
         </div>
       </div>
+
+      {planChainMismatch ? (
+        <div style={{ padding: "0 20px 16px" }}>
+          <div className="note" style={{ borderColor: "rgba(200,155,60,.35)" }}>
+            <strong>Wrong chain.</strong> The agent built this plan for chain{" "}
+            {plan.chain_id}, but this app is on {botChain.name} (chain {botChain.id}). Point the
+            agent at the same chain before executing — signing this would target a different
+            deployment.
+          </div>
+        </div>
+      ) : null}
 
       {fundsShort ? (
         <div style={{ padding: "0 20px 16px" }}>
@@ -220,7 +241,7 @@ export function StrategyCard({
               className="btn"
               style={{ background: "var(--gold)" }}
               onClick={approveIntent}
-              disabled={approval.isPending || approvalReceipt.isLoading}
+              disabled={planChainMismatch || approval.isPending || approvalReceipt.isLoading}
             >
               {approval.isPending
                 ? "Confirm in wallet…"
@@ -233,7 +254,7 @@ export function StrategyCard({
               type="button"
               className="btn"
               onClick={execute}
-              disabled={fundsShort || execution.isPending || executionReceipt.isLoading || executed}
+              disabled={planChainMismatch || fundsShort || execution.isPending || executionReceipt.isLoading || executed}
             >
               {executed
                 ? "Executed ✓"

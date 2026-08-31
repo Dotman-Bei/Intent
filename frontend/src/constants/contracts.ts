@@ -21,7 +21,7 @@ export const TOKEN_SYMBOL = process.env.NEXT_PUBLIC_TOKEN_SYMBOL || "BOT";
  * which has no `faucet()` — offering the button there produces a revert and nothing else.
  */
 export const TOKEN_HAS_FAUCET =
-  (process.env.NEXT_PUBLIC_TOKEN_HAS_FAUCET || "true") === "true";
+  (process.env.NEXT_PUBLIC_TOKEN_HAS_FAUCET || "false") === "true";
 
 /** True once the deploy script's addresses are in .env.local. */
 export const CONTRACTS_CONFIGURED = INTENT_VAULT_ADDRESS !== ZERO;

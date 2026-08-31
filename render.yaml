@@ -21,22 +21,22 @@ services:
       - key: ANTHROPIC_MODEL
         value: claude-opus-5
 
-      # BOT Chain testnet (chain 968). Swap to https://rpc.botchain.ai / 677 for mainnet.
+      # BOT Chain MAINNET (chain 677). Swap to https://rpc.bohr.life / 968 for testnet.
       - key: BOT_RPC_URL
-        value: https://rpc.bohr.life
+        value: https://rpc.botchain.ai
       - key: CHAIN_ID
-        value: "968"
+        value: "677"
       - key: EXPLORER_URL
-        value: https://scan.bohr.life
+        value: https://scan.botchain.ai
 
       - key: STRATEGY_REGISTRY_ADDRESS
-        value: "0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67"
+        value: "0xE7298c0354cC627dF8c5ED09e5fC41AF67BE3001"
       - key: INTENT_VAULT_ADDRESS
-        value: "0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2"
+        value: "0xdcc0A561Ae8a5ecA99E2e0C13effC561547A24d1"
       - key: APPROVAL_GATE_ADDRESS
-        value: "0x0ef0864E04134E1DF9a024a8DbdAF847deD04105"
+        value: "0x94AF2d4b80EF32644B6873Ea3CD159CD307b0003"
       - key: TEST_TOKEN_ADDRESS
-        value: "0xd7515912FC63D6484c0fDd4eA9930b17a15659f9"
+        value: "0xD5452816194a3784dBa983426cCe7c122F4abd30"  # real WBOT
       - key: TOKEN_DECIMALS
         value: "18"
 
