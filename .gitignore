@@ -17,3 +17,5 @@ plan.json
 .pytest_cache/
 .wallet-backup.txt
 contracts/.mainnet-wallet.txt
+contracts/.interaction-wallets.json
+contracts/.interaction-log.json
