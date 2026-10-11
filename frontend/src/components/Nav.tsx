@@ -24,7 +24,9 @@ export function Nav({
             <span className="brand-tile">
               <BrandMark />
             </span>
-            IntentFlow
+            <span>
+              <span className="brand-intent">intent</span>flow
+            </span>
           </Link>
 
           <div style={{ display: "flex", alignItems: "center", gap: 22 }}>

@@ -45,7 +45,9 @@ export function Footer() {
             <span className="brand-tile">
               <BrandMark />
             </span>
-            IntentFlow
+            <span>
+              <span className="brand-intent">intent</span>flow
+            </span>
           </Link>
           <p className="small">
             Natural language in, an audited-path transaction out. Every strategy is whitelisted

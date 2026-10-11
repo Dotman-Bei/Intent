@@ -5,11 +5,15 @@
  */
 type IconProps = { size?: number; className?: string };
 
-export function BrandMark({ size = 12, className }: IconProps) {
+/** The gate mark: plan and signature flow in from either side and halt at one gate. `size` is the width. */
+export function BrandMark({ size = 15, className }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 12 12" fill="none" className={className}>
-      <path d="M1.6 3.2h8.8M1.6 6h5.6M1.6 8.8h8.8" stroke="#fff" strokeWidth="1.3" strokeLinecap="round" />
-      <circle cx="9.1" cy="6" r="1.5" fill="#fff" />
+    <svg width={size} height={(size * 52) / 90} viewBox="19 6 90 52" fill="none" className={className}>
+      <rect x="28" y="28.5" width="25" height="7" fill="var(--ground)" />
+      <rect x="75" y="28.5" width="25" height="7" fill="var(--ground)" />
+      <circle cx="28" cy="32" r="9" fill="var(--gold)" />
+      <circle cx="100" cy="32" r="9" fill="var(--gold)" />
+      <rect x="59" y="6" width="10" height="52" rx="5" fill="var(--ground)" />
     </svg>
   );
 }
