@@ -264,30 +264,34 @@ keeps `uvicorn app.main:app` working unchanged for local development.
 
 ### Vercel environment variables
 
-Set on the project; the frontend build inlines the `NEXT_PUBLIC_*` ones.
+Set on the project; the frontend build inlines the `NEXT_PUBLIC_*` ones. These are the **mainnet** values the
+live site must run on; the testnet set is in `frontend/.env.example` and `backend/.env.example`.
 
 ```
-NEXT_PUBLIC_CHAIN_ID=968
-NEXT_PUBLIC_CHAIN_NAME=BOT Chain Testnet
-NEXT_PUBLIC_RPC_URL=https://rpc.bohr.life
-NEXT_PUBLIC_EXPLORER_URL=https://scan.bohr.life
-NEXT_PUBLIC_IS_TESTNET=true
-NEXT_PUBLIC_INTENT_VAULT=0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2
-NEXT_PUBLIC_STRATEGY_REGISTRY=0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67
-NEXT_PUBLIC_APPROVAL_GATE=0x0ef0864E04134E1DF9a024a8DbdAF847deD04105
-NEXT_PUBLIC_TEST_TOKEN=0xd7515912FC63D6484c0fDd4eA9930b17a15659f9
+NEXT_PUBLIC_CHAIN_ID=677
+NEXT_PUBLIC_CHAIN_NAME=BOT Chain
+NEXT_PUBLIC_RPC_URL=https://rpc.botchain.ai
+NEXT_PUBLIC_EXPLORER_URL=https://scan.botchain.ai
+NEXT_PUBLIC_IS_TESTNET=false
+NEXT_PUBLIC_INTENT_VAULT=0xdcc0A561Ae8a5ecA99E2e0C13effC561547A24d1
+NEXT_PUBLIC_STRATEGY_REGISTRY=0xE7298c0354cC627dF8c5ED09e5fC41AF67BE3001
+NEXT_PUBLIC_APPROVAL_GATE=0x94AF2d4b80EF32644B6873Ea3CD159CD307b0003
+NEXT_PUBLIC_TEST_TOKEN=0xD5452816194a3784dBa983426cCe7c122F4abd30
+NEXT_PUBLIC_TOKEN_SYMBOL=WBOT
+NEXT_PUBLIC_TOKEN_DECIMALS=18
+NEXT_PUBLIC_TOKEN_HAS_FAUCET=false
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=
 NEXT_PUBLIC_AGENT_API=/api/backend
 API_PREFIX=/api/backend
 ANTHROPIC_API_KEY=
 ANTHROPIC_MODEL=claude-opus-5
-BOT_RPC_URL=https://rpc.bohr.life
-CHAIN_ID=968
-EXPLORER_URL=https://scan.bohr.life
-STRATEGY_REGISTRY_ADDRESS=0x2298EA4faEDB0D8834f71AEE40721A2405D1Be67
-INTENT_VAULT_ADDRESS=0xEa20Ad63C317608ebC39D7Cab647bD717d845BD2
-APPROVAL_GATE_ADDRESS=0x0ef0864E04134E1DF9a024a8DbdAF847deD04105
-TEST_TOKEN_ADDRESS=0xd7515912FC63D6484c0fDd4eA9930b17a15659f9
+BOT_RPC_URL=https://rpc.botchain.ai
+CHAIN_ID=677
+EXPLORER_URL=https://scan.botchain.ai
+STRATEGY_REGISTRY_ADDRESS=0xE7298c0354cC627dF8c5ED09e5fC41AF67BE3001
+INTENT_VAULT_ADDRESS=0xdcc0A561Ae8a5ecA99E2e0C13effC561547A24d1
+APPROVAL_GATE_ADDRESS=0x94AF2d4b80EF32644B6873Ea3CD159CD307b0003
+TEST_TOKEN_ADDRESS=0xD5452816194a3784dBa983426cCe7c122F4abd30
 TOKEN_DECIMALS=18
 AGENT_PRIVATE_KEY=
 DEFAULT_APPROVAL_THRESHOLD=100
@@ -310,9 +314,9 @@ unchanged. In that topology drop `API_PREFIX`, set `NEXT_PUBLIC_AGENT_API` to th
 and set `CORS_ORIGINS` on the agent to the Vercel domain — including preview domains, which get
 their own hostnames.
 
-For mainnet, swap chain id to `677`, RPC to `https://rpc.botchain.ai`, explorer to
-`https://scan.botchain.ai`, `NEXT_PUBLIC_IS_TESTNET` to `false`, and the four addresses to whatever
-`deploy-mainnet.ts` prints.
+For a testnet preview instead, swap chain id to `968`, RPC to `https://rpc.bohr.life`, explorer to
+`https://scan.bohr.life`, `NEXT_PUBLIC_IS_TESTNET` to `true`, and the addresses to the testnet table
+above. Never use the 2026-08-19 testnet vault `0xA818…3656`: it is the exploitable deployment.
 
 ## Builder Challenge #2 submission requirements
 
