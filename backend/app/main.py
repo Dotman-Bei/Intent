@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -130,8 +131,11 @@ def portfolio(address: str) -> PortfolioResponse:
 
 
 app.include_router(router)
-if settings.api_prefix:
-    app.include_router(router, prefix=settings.api_prefix)
+# On Vercel the rewrite in vercel.json fixes the path at /api/backend, so mount it there whatever
+# API_PREFIX says: a dashboard edit that drops or mistypes the variable otherwise 404s every route.
+_VERCEL_PREFIX = "/api/backend"
+for _prefix in sorted({settings.api_prefix, _VERCEL_PREFIX if os.getenv("VERCEL") else ""} - {""}):
+    app.include_router(router, prefix=_prefix)
 
 
 if __name__ == "__main__":
