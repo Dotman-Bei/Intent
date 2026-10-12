@@ -705,6 +705,17 @@ a.pill:hover {
   color: var(--body);
 }
 
+.strip-link {
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+  text-underline-offset: 3px;
+}
+
+.strip-link:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
 .strip-item svg {
   fill: var(--faint);
   flex: none;

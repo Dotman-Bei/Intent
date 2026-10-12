@@ -16,11 +16,11 @@ import { Cell, Note, Pill, SectionHead, StatementRows, Steps, TextLink } from "@
 import { Reveal } from "@/components/Reveal";
 import { Rule, Section, Shell } from "@/components/Shell";
 import { Challenge, Ln, Sp, Term } from "@/components/Terminal";
-import { botChain } from "@/config/chains";
+import { BOT_CHAIN_SITE, botChain } from "@/config/chains";
 import { CONTRACTS_CONFIGURED } from "@/constants/contracts";
 
 const STACK = [
-  { label: "BOT Chain", glyph: <ChainGlyph size={15} /> },
+  { label: "BOT Chain", glyph: <ChainGlyph size={15} />, href: BOT_CHAIN_SITE },
   { label: "LangGraph", glyph: <AgentGlyph size={15} /> },
   { label: "Claude", glyph: <ChatGlyph size={15} /> },
   { label: "Solidity 0.8.24", glyph: <CodeGlyph size={15} /> },
@@ -76,7 +76,7 @@ export default function LandingPage() {
       <section className="in hero">
         <div className="hero-grid">
           <div className="hero-copy rv">
-            <Pill>Built on {botChain.name} · AI Native track</Pill>
+            <Pill href={BOT_CHAIN_SITE}>Built on {botChain.name} · AI Native track</Pill>
 
             <h1>
               Say it once, in English.{" "}
@@ -145,12 +145,19 @@ export default function LandingPage() {
       {/* --------------------------------------------------------------- stack */}
       <div className="in">
         <div className="strip rv">
-          {STACK.map((item) => (
-            <span className="strip-item" key={item.label}>
-              {item.glyph}
-              {item.label}
-            </span>
-          ))}
+          {STACK.map((item) =>
+            "href" in item ? (
+              <a className="strip-item strip-link" key={item.label} href={item.href} target="_blank" rel="noreferrer">
+                {item.glyph}
+                {item.label}
+              </a>
+            ) : (
+              <span className="strip-item" key={item.label}>
+                {item.glyph}
+                {item.label}
+              </span>
+            )
+          )}
         </div>
       </div>
 

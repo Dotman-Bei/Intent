@@ -26,6 +26,7 @@ export const botChain = defineChain({
 });
 
 export const EXPLORER_URL = EXPLORER;
+export const BOT_CHAIN_SITE = "https://www.botchain.ai/en/";
 
 export function txUrl(hash: string) {
   return `${EXPLORER}/tx/${hash}`;

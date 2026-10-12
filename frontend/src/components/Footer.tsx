@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { EXPLORER_URL, botChain } from "@/config/chains";
+import { BOT_CHAIN_SITE, EXPLORER_URL, botChain } from "@/config/chains";
 
 import { BrandMark } from "./Icons";
 
@@ -24,7 +24,7 @@ const GROUPS: { title: string; links: { label: string; href: string }[] }[] = [
     title: "Chain",
     links: [
       { label: "Explorer", href: EXPLORER_URL },
-      { label: "BOT Chain", href: "https://www.botchain.ai/en" },
+      { label: "BOT Chain", href: BOT_CHAIN_SITE },
     ],
   },
 ];
